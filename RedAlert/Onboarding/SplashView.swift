@@ -54,6 +54,12 @@ struct SplashView: View {
         }
         .ignoresSafeArea()
         .allowsHitTesting(!isSplit)
+        // Toucher l'écran passe l'animation.
+        .contentShape(Rectangle())
+        .onTapGesture { finish() }
+        // Animation décorative : VoiceOver annonce seulement le nom de l'app.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Red Alert")
         .task { await play() }
     }
 
@@ -72,22 +78,42 @@ struct SplashView: View {
         .frame(width: size.width, height: size.height)
     }
 
+    @State private var finished = false
+
+    private func finish() {
+        guard !finished else { return }
+        finished = true
+        onFinish()
+    }
+
+    /// Durée totale : environ 1,7 s (0,4 s avec « Réduire les animations »).
     private func play() async {
+        // « Réduire les animations » : simple fondu, sans train ni ouverture.
+        if Motion.isReduced {
+            lineOpacity = 0
+            withAnimation(.easeOut(duration: 0.25)) { logoVisible = true }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            finish()
+            return
+        }
+
         // 1. Logo en fondu.
-        withAnimation(.easeOut(duration: 0.7)) { logoVisible = true }
-        try? await Task.sleep(nanoseconds: 850_000_000)
+        withAnimation(.easeOut(duration: 0.45)) { logoVisible = true }
+        try? await Task.sleep(nanoseconds: 550_000_000)
+        guard !finished else { return }
 
         // 2. Le train traverse l'écran (rapide, avec une accélération au départ).
-        withAnimation(.easeIn(duration: 0.55)) { trainProgress = 1 }
-        try? await Task.sleep(nanoseconds: 600_000_000)
+        withAnimation(.easeIn(duration: 0.45)) { trainProgress = 1 }
+        try? await Task.sleep(nanoseconds: 480_000_000)
+        guard !finished else { return }
 
         // 3. Ouverture en deux.
-        withAnimation(.easeInOut(duration: 0.6)) {
+        withAnimation(.easeInOut(duration: 0.5)) {
             isSplit = true
             lineOpacity = 0
         }
-        try? await Task.sleep(nanoseconds: 650_000_000)
-        onFinish()
+        try? await Task.sleep(nanoseconds: 520_000_000)
+        finish()
     }
 }
 

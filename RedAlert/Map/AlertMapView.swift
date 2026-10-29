@@ -11,6 +11,9 @@ struct AlertMapView: View {
     @State private var showList = false
     @State private var showSettings = false
     @State private var showFilters = false
+    @State private var boardStation: Station?
+    @AccessibilityFocusState private var detailFocused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         ZStack {
@@ -25,6 +28,8 @@ struct AlertMapView: View {
                                     details: model.displayText(for: selected),
                                     isTranslated: model.isTranslated(selected)) { deselect() }
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                        // VoiceOver lit directement la fiche qui vient de s'ouvrir.
+                        .accessibilityFocused($detailFocused)
                 } else if let error = model.errorMessage {
                     Text(error)
                         .font(.footnote)
@@ -60,6 +65,9 @@ struct AlertMapView: View {
                 }
             }
         }
+        .sheet(item: $boardStation) { station in
+            StationBoardView(station: station)
+        }
         .sheet(isPresented: $showFilters) {
             AlertFilterView(model: model)
                 .presentationDetents([.medium, .large])
@@ -70,11 +78,12 @@ struct AlertMapView: View {
             }
             // Zoom sur les régions choisies.
             if oldValue.regions != newValue.regions {
-                withAnimation(.easeInOut(duration: 0.8)) {
+                withAnimation(Motion.adaptive(.easeInOut(duration: 0.8))) {
                     position = .region(homeRegion)
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: selected?.id)
     }
 
     // MARK: Carte
@@ -93,10 +102,16 @@ struct AlertMapView: View {
             ForEach(model.sectionAlerts) { alert in
                 ForEach(endpoints(of: alert)) { place in
                     Annotation(place.name, coordinate: place.coordinate, anchor: .center) {
+                        // Toucher une gare affiche ses prochains départs.
                         Circle()
                             .fill(.white)
                             .frame(width: 9, height: 9)
                             .overlay(Circle().stroke(alert.severity.color, lineWidth: 3))
+                            .frame(width: 44, height: 44) // zone touchable confortable
+                            .contentShape(Circle())
+                            .onTapGesture { boardStation = place }
+                            .accessibilityLabel(t("Départs de %@", place.name))
+                            .accessibilityAddTraits(.isButton)
                     }
                 }
             }
@@ -107,6 +122,10 @@ struct AlertMapView: View {
                     AlertMarker(severity: alert.severity, kind: alert.kind, isSelected: selected?.id == alert.id)
                         .opacity(alert.isActiveNow || selected?.id == alert.id ? 1 : 0.55)
                         .onTapGesture { select(alert) }
+                        .accessibilityElement()
+                        .accessibilityLabel("\(alert.headline), \(alert.section)")
+                        .accessibilityValue(alert.windowText ?? alert.periodText)
+                        .accessibilityAddTraits(.isButton)
                 }
                 .annotationTitles(.hidden)
             }
@@ -128,13 +147,18 @@ struct AlertMapView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image("Logo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 58)
+            // Avec un très grand texte, on retire le logo pour laisser la place au texte.
+            if !typeSize.isAccessibilitySize {
+                Image("Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 58)
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Red Alert")
                     .font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
                 HStack(spacing: 6) {
                     if model.isLoading {
                         ProgressView().controlSize(.mini)
@@ -146,13 +170,16 @@ struct AlertMapView: View {
                     Text(statusText)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 }
+                .accessibilityElement(children: .combine)
             }
             Spacer(minLength: 4)
-            CircleButton(systemImage: "list.bullet") { showList = true }
+            CircleButton(systemImage: "list.bullet", label: t("Liste des alertes"),
+                         hint: t("Parcourt toutes les alertes sans utiliser la carte.")) { showList = true }
                 .tutorialTarget(.list)
-            CircleButton(systemImage: "line.3.horizontal.decrease") { showFilters = true }
+            CircleButton(systemImage: "line.3.horizontal.decrease", label: t("Filtres"),
+                         value: model.filters.isDefault ? "" : t("Filtres personnalisés actifs")) { showFilters = true }
                 .tutorialTarget(.filters)
                 .overlay(alignment: .topTrailing) {
                     // Point bleu : des filtres personnalisés sont actifs.
@@ -160,7 +187,7 @@ struct AlertMapView: View {
                         Circle().fill(Theme.accent).frame(width: 10, height: 10).offset(x: 1, y: -1)
                     }
                 }
-            CircleButton(systemImage: "gearshape.fill") { showSettings = true }
+            CircleButton(systemImage: "gearshape.fill", label: t("Réglages")) { showSettings = true }
                 .tutorialTarget(.settings)
         }
         .padding(.horizontal, 14)
@@ -191,7 +218,7 @@ struct AlertMapView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "line.3.horizontal.decrease.circle.fill")
                     Text(model.filters.summary)
-                        .lineLimit(1)
+                        .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                 }
                 .font(.footnote.weight(.semibold))
                 .padding(.horizontal, 12)
@@ -199,6 +226,7 @@ struct AlertMapView: View {
                 .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(t("Filtres : %@", model.filters.summary))
             Spacer(minLength: 0)
         }
     }
@@ -211,14 +239,15 @@ struct AlertMapView: View {
     // MARK: Sélection
 
     private func select(_ alert: RailAlert) {
-        withAnimation(.easeInOut(duration: 0.8)) {
+        withAnimation(Motion.adaptive(.easeInOut(duration: 0.8))) {
             selected = alert
             position = .region(alert.isOnMap ? alert.region : homeRegion)
         }
+        detailFocused = true
     }
 
     private func deselect() {
-        withAnimation(.easeInOut(duration: 0.8)) {
+        withAnimation(Motion.adaptive(.easeInOut(duration: 0.8))) {
             selected = nil
             position = .region(homeRegion)
         }
@@ -232,11 +261,13 @@ struct AlertMarker: View {
     let kind: RailAlert.Kind
     let isSelected: Bool
     @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
 
     var body: some View {
         ZStack {
             // Onde qui pulse pour les interruptions imprévues (rouge).
-            if severity == .interrupted && kind == .disruption {
+            if severity == .interrupted && kind == .disruption && !reduceMotion {
                 Circle()
                     .fill(severity.color.opacity(0.4))
                     .frame(width: 46, height: 46)
@@ -247,6 +278,14 @@ struct AlertMarker: View {
                 .font(.system(size: isSelected ? 40 : 28))
                 .foregroundStyle(severity.color)
                 .shadow(color: .black.opacity(0.55), radius: 3, y: 2)
+                .overlay {
+                    // « Différencier sans couleur » : les interruptions ont en plus un contour blanc.
+                    if differentiateWithoutColor && severity == .interrupted {
+                        Image(systemName: "triangle")
+                            .font(.system(size: isSelected ? 40 : 28, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
+                }
             Image(systemName: kind.symbol)
                 .font(.system(size: symbolSize, weight: .black))
                 .foregroundStyle(.black)
@@ -254,8 +293,9 @@ struct AlertMarker: View {
         }
         .frame(width: 52, height: 52)
         .contentShape(Rectangle())
-        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.7), value: isSelected)
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { pulse = true }
         }
     }
@@ -285,14 +325,15 @@ struct AlertDetailCard: View {
                     Label(alert.headline,
                           systemImage: alert.kind == .construction ? "hammer.fill" : "exclamationmark.triangle.fill")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(alert.severity.color)
+                        .foregroundStyle(alert.severity.textColor)
                     Text(alert.section)
                         .font(.title3.bold())
                         .lineLimit(3)
+                        .accessibilityAddTraits(.isHeader)
                     if let window = alert.windowText {
                         Text(window)
                             .font(.footnote.weight(.semibold))
-                            .foregroundStyle(alert.isActiveNow ? alert.severity.color : Color.white.opacity(0.8))
+                            .foregroundStyle(alert.isActiveNow ? alert.severity.textColor : Color.white.opacity(0.8))
                     }
                     Text(alert.periodText)
                         .font(.footnote)
@@ -304,8 +345,10 @@ struct AlertDetailCard: View {
                         .font(.body.weight(.bold))
                         .frame(width: 34, height: 34)
                         .background(.white.opacity(0.12), in: Circle())
+                        .minimumTapTarget()
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(t("Fermer"))
             }
 
             if !details.isEmpty {
@@ -356,9 +399,10 @@ struct AlertListView: View {
                         Button { onSelect(alert) } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: alert.kind == .construction ? "hammer.fill" : "exclamationmark.triangle.fill")
-                                    .foregroundStyle(alert.severity.color)
+                                    .foregroundStyle(alert.severity.textColor)
                                     .font(.title3)
                                     .frame(width: 28)
+                                    .accessibilityHidden(true)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(alert.section).font(.headline).lineLimit(2)
                                     Text(alert.headline + (alert.isOnMap ? "" : t(" · non localisé")))
@@ -371,6 +415,7 @@ struct AlertListView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }
@@ -384,15 +429,24 @@ struct AlertListView: View {
 
 struct CircleButton: View {
     let systemImage: String
+    /// Texte lu par VoiceOver (le bouton n'affiche qu'une icône).
+    var label: String = ""
+    /// Explication supplémentaire lue par VoiceOver (facultatif).
+    var hint: String = ""
+    /// État lu par VoiceOver (facultatif), par exemple « Filtres personnalisés actifs ».
+    var value: String = ""
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .frame(width: 38, height: 38)
+                .frame(width: 44, height: 44)
                 .background(.white.opacity(0.12), in: Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityHint(hint)
+        .accessibilityValue(value)
     }
 }

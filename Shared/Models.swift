@@ -88,11 +88,80 @@ struct Trip: Codable, Hashable, Identifiable {
 enum DepartureState: Hashable {
     case onTime
     case delayed(minutes: Int)
+    /// Départ annoncé en avance (fréquent pour les bus) : on risque de le rater.
+    case early(minutes: Int)
     case cancelled
     case unknown
 }
 
-/// Une correspondance renvoyée par l'horaire (search.ch).
+/// Message officiel sur un train (perturbation, travaux, bus de remplacement, ascenseur en panne...).
+struct ServiceMessage: Codable, Hashable, Identifiable {
+    /// Numéro officiel du message (ou identifiant créé par l'app pour les cas détectés dans l'horaire).
+    let id: String
+    /// Phrase courte, ex. « Le trafic ferroviaire entre Palézieux et Romont FR est restreint. »
+    let summary: String
+    /// Cause, détails, recommandation et durée, quand ils existent.
+    let details: String
+    /// `false` pour une information qui ne retarde pas le train (accessibilité d'une gare, par exemple).
+    let affectsService: Bool
+    /// Message prévu à l'avance (travaux) ou survenu en temps réel (accident, panne...).
+    let isPlanned: Bool
+}
+
+/// Une étape du trajet : un train, un bus, un tram... entre deux arrêts.
+struct TripLeg: Codable, Hashable, Identifiable {
+    /// "rail", "bus", "tram", "metro", "water", "cableway"...
+    let mode: String
+    let line: String?
+    let destination: String?
+    let fromName: String
+    let toName: String
+    let plannedDeparture: Date
+    let departureDelay: Int?
+    let plannedArrival: Date
+    let arrivalDelay: Int?
+    let departureTrack: String?
+    let plannedDepartureTrack: String?
+    let arrivalTrack: String?
+    let isCancelled: Bool
+    let isReplacementBus: Bool
+    /// Temps de marche prévu avant cette étape (changement de quai), en minutes.
+    let walkMinutesBefore: Int?
+
+    var id: String { "\(line ?? mode)-\(Int(plannedDeparture.timeIntervalSince1970))-\(fromName)" }
+
+    var expectedDeparture: Date { plannedDeparture.addingTimeInterval(TimeInterval((departureDelay ?? 0) * 60)) }
+    var expectedArrival: Date {
+        plannedArrival.addingTimeInterval(TimeInterval((arrivalDelay ?? departureDelay ?? 0) * 60))
+    }
+
+    var departureTrackChanged: Bool {
+        guard let departureTrack, let plannedDepartureTrack else { return false }
+        return departureTrack != plannedDepartureTrack
+    }
+
+    var departureState: DepartureState {
+        if isCancelled { return .cancelled }
+        guard let delay = departureDelay else { return .unknown }
+        if delay > 0 { return .delayed(minutes: delay) }
+        if delay < 0 { return .early(minutes: -delay) }
+        return .onTime
+    }
+}
+
+/// Correspondance qui risque d'être manquée à cause d'un retard.
+struct TransferRisk: Hashable {
+    /// Index de l'étape suivante dans `legs`.
+    let nextLegIndex: Int
+    let station: String
+    /// Minutes entre l'arrivée estimée et le départ estimé suivant (peut être négatif).
+    let marginMinutes: Int
+    /// Minutes nécessaires (marche prévue, au moins 1).
+    let neededMinutes: Int
+    var isMissed: Bool { marginMinutes < 0 }
+}
+
+/// Une correspondance renvoyée par l'horaire (OJP 2.0).
 struct ConnectionInfo: Codable, Hashable, Identifiable {
     let plannedDeparture: Date
     let plannedArrival: Date
@@ -109,17 +178,59 @@ struct ConnectionInfo: Codable, Hashable, Identifiable {
     let notices: [String]
     /// Numéros des gares desservies (ex. "8501300" = Montreux), dans l'ordre.
     var stopIDs: [String] = []
+    /// La voie a changé par rapport à l'horaire.
+    var trackChanged: Bool = false
+    /// Affluence prévue, 1 = faible, 2 = moyenne, 3 = forte (nil = inconnue).
+    var occupancyFirstClass: Int? = nil
+    var occupancySecondClass: Int? = nil
+    /// Voie prévue à l'horaire (différente de `track` quand la voie a changé).
+    var plannedTrack: String? = nil
+    /// Tous les messages officiels qui concernent ce train (y compris ceux sans effet sur la circulation).
+    var messages: [ServiceMessage]? = nil
+    /// Toutes les étapes du trajet, correspondances comprises.
+    var legs: [TripLeg]? = nil
+
+    /// Correspondances menacées : l'arrivée estimée laisse moins de temps que la marche prévue.
+    var transferRisks: [TransferRisk] {
+        guard let legs, legs.count > 1 else { return [] }
+        var risks: [TransferRisk] = []
+        for index in 1..<legs.count {
+            let previous = legs[index - 1], next = legs[index]
+            guard !previous.isCancelled, !next.isCancelled,
+                  previous.arrivalDelay != nil || next.departureDelay != nil else { continue }
+            let margin = Int((next.expectedDeparture.timeIntervalSince(previous.expectedArrival) / 60).rounded(.down))
+            let needed = max(next.walkMinutesBefore ?? 1, 1)
+            let plannedMargin = Int(next.plannedDeparture.timeIntervalSince(previous.plannedArrival) / 60)
+            // On ne signale que si la situation s'est dégradée par rapport à l'horaire.
+            if margin < needed && margin < plannedMargin {
+                risks.append(TransferRisk(nextLegIndex: index, station: next.fromName,
+                                          marginMinutes: margin, neededMinutes: needed))
+            }
+        }
+        return risks
+    }
 
     var id: String { "\(line ?? "-")-\(Int(plannedDeparture.timeIntervalSince1970))" }
 
     var state: DepartureState {
         if isCancelled { return .cancelled }
         guard let delay = departureDelay else { return .unknown }
-        return delay > 0 ? .delayed(minutes: delay) : .onTime
+        if delay > 0 { return .delayed(minutes: delay) }
+        if delay < 0 { return .early(minutes: -delay) }
+        return .onTime
     }
 
     var expectedDeparture: Date {
         plannedDeparture.addingTimeInterval(TimeInterval((departureDelay ?? 0) * 60))
+    }
+
+    var expectedArrival: Date {
+        plannedArrival.addingTimeInterval(TimeInterval((arrivalDelay ?? departureDelay ?? 0) * 60))
+    }
+
+    /// Affluence en 2e classe (la plus utile), sinon en 1re.
+    var occupancy: Occupancy? {
+        (occupancySecondClass ?? occupancyFirstClass).flatMap(Occupancy.init(rawValue:))
     }
 
     /// Y a-t-il un problème selon le seuil de retard choisi ?
@@ -127,6 +238,7 @@ struct ConnectionInfo: Codable, Hashable, Identifiable {
         switch state {
         case .cancelled: return true
         case .delayed(let minutes): return minutes >= threshold
+        case .early(let minutes): return minutes >= 1 // partir en avance fait rater le bus ou le train
         default: return false
         }
     }
@@ -156,9 +268,37 @@ struct TripReport: Codable, Hashable {
         upcoming.first { !$0.isCancelled && $0.id != focus?.id }
     }
 
+    /// Meilleure alternative quand le train surveillé a un problème :
+    /// le train non supprimé qui arrive le plus tôt, s'il arrive avant le train surveillé (ou si celui-ci est supprimé).
+    var bestAlternative: ConnectionInfo? {
+        guard let focus else { return nil }
+        let candidates = upcoming.filter { !$0.isCancelled && $0.id != focus.id && $0.expectedDeparture >= Date().addingTimeInterval(-60) }
+        guard let best = candidates.min(by: { $0.expectedArrival < $1.expectedArrival }) else { return nil }
+        if focus.isCancelled { return best }
+        return best.expectedArrival < focus.expectedArrival ? best : nil
+    }
+
     enum Severity: Int, Codable {
         case unknown, ok, warning, critical
     }
+}
+
+// MARK: - Affluence
+
+/// Affluence prévue dans le train (échelle des CFF en 3 niveaux).
+enum Occupancy: Int, Codable {
+    case low = 1, medium = 2, high = 3
+
+    var label: String {
+        switch self {
+        case .low: return t("Peu de monde")
+        case .medium: return t("Assez chargé")
+        case .high: return t("Très chargé")
+        }
+    }
+
+    /// Nombre de silhouettes à afficher (1 à 3).
+    var level: Int { rawValue }
 }
 
 // MARK: - Numéro de gare commun à toutes les sources
@@ -175,6 +315,12 @@ enum StationNumber {
         // Gares suisses : 85 + numéro sur 5 chiffres.
         if (8_500_000..<8_600_000).contains(number) { return String(number - 8_500_000) }
         return String(number)
+    }
+
+    /// Numéro UIC complet d'une gare suisse (ex. "ch:1:sloid:1120" ou "1120" -> "8501120").
+    static func uic(_ id: String) -> String? {
+        guard let shortNumber = short(id), let number = Int(shortNumber) else { return nil }
+        return number < 100_000 ? String(8_500_000 + number) : String(number)
     }
 }
 

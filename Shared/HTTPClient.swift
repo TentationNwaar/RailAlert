@@ -40,6 +40,7 @@ enum APIError: LocalizedError {
     case badStatus(Int)
     case invalidURL
     case unexpectedFormat
+    case missingKey
 
     var errorDescription: String? {
         switch self {
@@ -48,6 +49,7 @@ enum APIError: LocalizedError {
         case .badStatus(let code): return t("Le serveur a répondu avec le code %ld.", code)
         case .invalidURL: return t("Adresse de requête invalide.")
         case .unexpectedFormat: return t("Réponse du serveur dans un format inattendu.")
+        case .missingKey: return t("Horaire indisponible pour le moment.")
         }
     }
 }

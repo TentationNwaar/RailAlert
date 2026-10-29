@@ -137,6 +137,13 @@ struct WeekdayPicker: View {
         let letter: String
     }
 
+    /// Nom complet du jour pour VoiceOver ("lundi", "Montag"...).
+    private func fullName(_ weekday: Int) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLanguage.current.locale
+        return calendar.standaloneWeekdaySymbols[weekday - 1]
+    }
+
     /// Lundi → dimanche, avec l'initiale du jour dans la langue choisie ("L", "Mo", "L", "M"...).
     private var days: [Day] {
         var calendar = Calendar(identifier: .gregorian)
@@ -154,11 +161,13 @@ struct WeekdayPicker: View {
                 } label: {
                     Text(day.letter)
                         .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                         .background(isOn ? Theme.accent : Color.white.opacity(0.08), in: Circle())
                         .foregroundStyle(isOn ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(fullName(day.id))
+                .accessibilityAddTraits(isOn ? .isSelected : [])
             }
         }
     }
@@ -179,22 +188,18 @@ struct StationSearchView: View {
     var body: some View {
         List {
             if let errorText {
-                Text(errorText).foregroundStyle(Theme.red).font(.footnote)
+                Text(errorText).foregroundStyle(Theme.redText).font(.footnote)
             }
-            ForEach(results) { station in
-                Button {
-                    onSelect(station)
-                    dismiss()
-                } label: {
-                    HStack {
-                        Image(systemName: "tram.fill").foregroundStyle(.secondary)
-                        Text(station.name)
-                        Spacer()
+            // Champ vide : on propose les dernières gares choisies (moins de frappe).
+            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                let recents = RecentStations.load()
+                if !recents.isEmpty {
+                    Section(t("Gares récentes")) {
+                        ForEach(recents) { station in row(station, icon: "clock.arrow.circlepath") }
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
+            ForEach(results) { station in row(station, icon: "tram.fill") }
         }
         .overlay {
             if isSearching && results.isEmpty { ProgressView() }
@@ -208,6 +213,10 @@ struct StationSearchView: View {
         .task(id: query) {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
+            guard query.trimmingCharacters(in: .whitespaces).count >= 2 else {
+                results = []
+                return
+            }
             isSearching = true
             defer { isSearching = false }
             do {
@@ -216,6 +225,44 @@ struct StationSearchView: View {
             } catch {
                 if !Task.isCancelled { errorText = t("Recherche impossible : %@", error.localizedDescription) }
             }
+        }
+    }
+}
+
+private extension StationSearchView {
+    func row(_ station: Station, icon: String) -> some View {
+        Button {
+            RecentStations.add(station)
+            onSelect(station)
+            dismiss()
+        } label: {
+            HStack {
+                Image(systemName: icon).foregroundStyle(.secondary).accessibilityHidden(true)
+                Text(station.name)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Les 6 dernières gares choisies, proposées quand le champ de recherche est vide.
+enum RecentStations {
+    private static let key = "recentStations"
+
+    static func load() -> [Station] {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let stations = try? JSONDecoder().decode([Station].self, from: data)
+        else { return [] }
+        return stations
+    }
+
+    static func add(_ station: Station) {
+        var stations = load().filter { $0.id != station.id }
+        stations.insert(station, at: 0)
+        if let data = try? JSONEncoder().encode(Array(stations.prefix(6))) {
+            UserDefaults.standard.set(data, forKey: key)
         }
     }
 }

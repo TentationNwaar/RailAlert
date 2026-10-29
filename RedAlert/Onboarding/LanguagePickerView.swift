@@ -26,12 +26,15 @@ struct LanguagePickerView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 150)
+                    .accessibilityHidden(true)
 
                 VStack(spacing: 6) {
-                    ForEach(titles, id: \.self) { title in
-                        Text(title)
+                    ForEach(Array(titles.enumerated()), id: \.offset) { index, title in
+                        // VoiceOver prononce chaque titre avec la voix de sa langue.
+                        Text(spoken(title, in: AppLanguage.allCases[index]))
                             .font(title == titles.first ? Font.title3.weight(.bold) : Font.subheadline)
                             .foregroundStyle(title == titles.first ? Color.white : Color.white.opacity(0.6))
+                            .accessibilityAddTraits(index == 0 ? .isHeader : [])
                     }
                 }
                 .multilineTextAlignment(.center)
@@ -42,12 +45,13 @@ struct LanguagePickerView: View {
                             withAnimation(.spring(response: 0.3)) { selected = language }
                         } label: {
                             HStack {
-                                Text(language.nativeName)
+                                Text(spoken(language.nativeName, in: language))
                                     .font(.title3.weight(.semibold))
                                 Spacer()
                                 Image(systemName: selected == language ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
                                     .foregroundStyle(selected == language ? Theme.red : Color.white.opacity(0.4))
+                                    .accessibilityHidden(true)
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, 16)
@@ -62,6 +66,7 @@ struct LanguagePickerView: View {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(.white)
+                        .accessibilityAddTraits(selected == language ? .isSelected : [])
                     }
                 }
 
@@ -85,7 +90,14 @@ struct LanguagePickerView: View {
             .offset(y: appeared ? 0 : 20)
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) { appeared = true }
+            withAnimation(Motion.adaptive(.easeOut(duration: 0.5))) { appeared = true }
         }
+    }
+
+    /// Texte marqué avec sa langue, pour que VoiceOver le prononce correctement.
+    private func spoken(_ text: String, in language: AppLanguage) -> AttributedString {
+        var attributed = AttributedString(text)
+        attributed.languageIdentifier = language.rawValue
+        return attributed
     }
 }

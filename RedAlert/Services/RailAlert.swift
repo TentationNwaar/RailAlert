@@ -17,6 +17,14 @@ struct RailAlert: Identifiable, Hashable {
             }
         }
 
+        /// Couleur pour un texte ou une icône sur fond sombre (contraste suffisant).
+        var textColor: Color {
+            switch self {
+            case .interrupted: return Theme.redText
+            case .limited, .info: return Theme.yellow
+            }
+        }
+
         var label: String {
             switch self {
             case .interrupted: return t("Service interrompu")

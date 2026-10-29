@@ -1,0 +1,4 @@
+/* Phrases Siri (App Shortcuts). La clé est la phrase française écrite dans TripIntents.swift. */
+"État de mon train dans ${applicationName}" = "Train status in ${applicationName}";
+"Mon train est à l’heure avec ${applicationName}" = "Is my train on time with ${applicationName}";
+"Vérifie mon trajet avec ${applicationName}" = "Check my trip with ${applicationName}";

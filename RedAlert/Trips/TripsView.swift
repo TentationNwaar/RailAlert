@@ -4,10 +4,25 @@ import SwiftUI
 struct TripsView: View {
     @EnvironmentObject private var model: TripsModel
     @EnvironmentObject private var tutorial: TutorialController
+    @ObservedObject private var store = StoreManager.shared
+    @ObservedObject private var router = AppRouter.shared
     @State private var showEditor = false
+    @State private var showPaywall = false
+    /// Pile de navigation : permet d'ouvrir un trajet depuis une notification ou le widget.
+    @State private var path: [UUID] = []
+    @State private var savedCount = 0
+
+    /// Version gratuite : 1 trajet. Au-delà, on propose Red Alert+.
+    private func addTrip() {
+        if store.isPremium || model.trips.count < Premium.freeTripLimit {
+            showEditor = true
+        } else {
+            showPaywall = true
+        }
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if model.trips.isEmpty {
                     emptyState
@@ -19,14 +34,27 @@ struct TripsView: View {
             .navigationTitle(t("Mes trajets"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showEditor = true } label: {
+                    Button { addTrip() } label: {
                         Image(systemName: "plus.circle.fill").font(.title3)
                     }
+                    .accessibilityLabel(t("Ajouter un trajet"))
                 }
             }
             .sheet(isPresented: $showEditor) {
-                TripEditorView { model.add($0) }
+                TripEditorView {
+                    model.add($0)
+                    savedCount += 1
+                }
             }
+            .sensoryFeedback(.success, trigger: savedCount)
+            // Notification, widget ou suivi en direct touché : on ouvre le trajet.
+            .onChange(of: router.pendingTripID, initial: true) { _, id in
+                guard let id else { return }
+                router.pendingTripID = nil
+                guard model.trips.contains(where: { $0.id == id }) else { return }
+                path = [id]
+            }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
             .navigationDestination(for: UUID.self) { id in
                 TripDetailView(tripID: id)
             }
@@ -36,7 +64,7 @@ struct TripsView: View {
                 tutorial.requestAddTrip = false
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 350_000_000)
-                    showEditor = true
+                    addTrip()
                 }
             }
         }
@@ -45,15 +73,25 @@ struct TripsView: View {
     private var tripList: some View {
         List {
             ForEach(model.trips) { trip in
-                ZStack {
-                    // Lien invisible : toute la carte est cliquable, sans chevron.
-                    NavigationLink(value: trip.id) { EmptyView() }.opacity(0)
-                    TripCardView(trip: trip,
-                                 report: model.reports[trip.id],
-                                 isLoading: model.loading.contains(trip.id),
-                                 error: model.errors[trip.id],
-                                 networkAlerts: model.networkAlerts[trip.id] ?? [])
+                let paused = !store.isPremium && Premium.isPaused(trip, in: model.trips)
+                // Toute la carte est un bouton (utilisable aussi avec VoiceOver et le contrôle de sélection).
+                Button {
+                    if paused { showPaywall = true } else { path.append(trip.id) }
+                } label: {
+                    if paused {
+                        // Trajet en pause (version gratuite) : toucher la carte propose Red Alert+.
+                        TripCardView(trip: trip, report: nil, isLoading: false, error: nil, isPaused: true)
+                    } else {
+                        TripCardView(trip: trip,
+                                     report: model.reports[trip.id],
+                                     isLoading: model.loading.contains(trip.id),
+                                     error: model.errors[trip.id],
+                                     networkAlerts: model.networkAlerts[trip.id] ?? [],
+                                     alternativesUnlocked: store.isPremium)
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint(paused ? t("Ouvre Red Alert+") : t("Ouvre le détail du trajet"))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -67,7 +105,7 @@ struct TripsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .refreshable { await model.refreshAll() }
+        .refreshable { await model.refreshAll(force: true) }
     }
 
     private var emptyState: some View {
@@ -76,7 +114,7 @@ struct TripsView: View {
         } description: {
             Text(t("Ajoute un trajet que tu fais souvent. Red Alert te préviendra en cas de retard, de suppression, de perturbation ou de travaux sur ton parcours, même sur l’écran verrouillé."))
         } actions: {
-            Button(t("Ajouter un trajet")) { showEditor = true }
+            Button(t("Ajouter un trajet")) { addTrip() }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -93,6 +131,10 @@ struct TripCardView: View {
     var networkAlerts: [TripNetworkAlert] = []
     /// Nombre maximal d'alertes réseau affichées (la page de détail les montre toutes).
     var maxNetworkAlerts = 2
+    /// Alternatives visibles (Red Alert+). Sinon, un encart indique qu'une alternative existe.
+    var alternativesUnlocked = true
+    /// Trajet non surveillé (version gratuite, au-delà du premier trajet).
+    var isPaused = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -100,7 +142,7 @@ struct TripCardView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(trip.title)
                     .font(.headline)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Spacer(minLength: 8)
                 if isLoading && report == nil {
                     ProgressView().controlSize(.small)
@@ -115,19 +157,28 @@ struct TripCardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            if isPaused {
+                Label(t("En pause : la version gratuite surveille 1 trajet. Touche pour découvrir Red Alert+."),
+                      systemImage: "pause.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
             // Ligne 3 : train surveillé
             if let focus = report?.focus {
                 HStack(alignment: .lastTextBaseline, spacing: 10) {
                     Text(Formatting.time(focus.plannedDeparture))
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
                         .strikethrough(focus.isCancelled, color: Theme.red)
-                    if let delay = focus.departureDelay, delay > 0, !focus.isCancelled {
+                        .minimumScaleFactor(0.7)
+                    if let delay = focus.departureDelay, delay != 0, !focus.isCancelled {
                         Text("→ \(Formatting.time(focus.expectedDeparture))")
+                            .accessibilityLabel(t("Départ estimé à %@", Formatting.time(focus.expectedDeparture)))
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.yellow)
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         if let line = focus.line {
                             Text(line)
                                 .font(.caption.weight(.bold))
@@ -135,11 +186,38 @@ struct TripCardView: View {
                                 .padding(.vertical, 3)
                                 .background(Theme.red, in: RoundedRectangle(cornerRadius: 5))
                         }
-                        if let track = focus.track {
-                            Text(t("Voie %@", track)).font(.caption).foregroundStyle(.secondary)
+                        if let occupancy = focus.occupancy {
+                            OccupancyView(occupancy: occupancy, compact: true)
                         }
                     }
+                    // Voie de départ, bien visible (jaune quand elle a changé).
+                    if let track = focus.track, !focus.isCancelled {
+                        TrackBadge(track: track, plannedTrack: focus.plannedTrack, changed: focus.trackChanged,
+                                   mode: focus.legs?.first?.mode ?? "rail")
+                    }
                 }
+            }
+
+            // Alternative quand le train surveillé a un problème.
+            if let report, let alternative = report.bestAlternative ?? (hasInterruption ? report.nextAlternative : nil) {
+                Label(alternativesUnlocked ? t("Alternative : %@", Formatting.alternativeText(alternative))
+                                           : t("Un autre train est disponible · Red Alert+"),
+                      systemImage: alternativesUnlocked ? "arrow.triangle.branch" : "lock.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.accent.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+            }
+
+            // Correspondance menacée par un retard.
+            if !isPaused, let risk = report?.focus?.transferRisks.first {
+                Label(risk.isMissed
+                      ? t("Correspondance compromise à %@", risk.station)
+                      : t("Correspondance serrée à %@ : %ld min", risk.station, max(risk.marginMinutes, 0)),
+                      systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(risk.isMissed ? Theme.redText : Theme.yellow)
             }
 
             // Ligne 4 : trains suivants
@@ -176,7 +254,7 @@ struct TripCardView: View {
             }
 
             if let error {
-                Text(error).font(.caption).foregroundStyle(Theme.red)
+                Text(error).font(.caption).foregroundStyle(Theme.redText)
             }
         }
         .cardStyle()
@@ -184,7 +262,10 @@ struct TripCardView: View {
             RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                 .strokeBorder(borderColor, lineWidth: networkAlerts.isEmpty ? 0 : 1.5)
         )
+        .opacity(isPaused ? 0.55 : 1)
     }
+
+    private var hasInterruption: Bool { networkAlerts.contains(where: \.isInterruption) }
 
     private var borderColor: Color {
         networkAlerts.contains(where: \.isInterruption) ? Theme.red.opacity(0.8) : Theme.yellow.opacity(0.7)
@@ -225,6 +306,7 @@ struct NetworkAlertRow: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -261,11 +343,64 @@ struct ConnectionChip: View {
                 .strikethrough(connection.isCancelled)
             if case .delayed(let minutes) = connection.state {
                 Text("+\(minutes)").foregroundStyle(Theme.yellow)
+            } else if case .early(let minutes) = connection.state {
+                Text("−\(minutes)").foregroundStyle(Theme.yellow)
             }
         }
         .font(.caption.weight(.semibold))
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(.white.opacity(0.08), in: Capsule())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Formatting.time(connection.plannedDeparture)), \(Formatting.stateText(connection.state))")
+    }
+}
+
+/// Voie de départ en grand : « Voie 7 », sur fond jaune avec « au lieu de 5 » quand elle a changé.
+struct TrackBadge: View {
+    let track: String
+    let plannedTrack: String?
+    let changed: Bool
+    var mode = "rail"
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(mode == "rail" ? t("Voie") : t("Quai"))
+                .font(.caption2.weight(.semibold))
+            Text(track)
+                .font(.system(.title, design: .rounded).weight(.heavy))
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            if changed, let plannedTrack {
+                Text(t("au lieu de %@", plannedTrack))
+                    .font(.caption2.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+        .foregroundStyle(changed ? Color.black : Color.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(minWidth: 58)
+        .background(changed ? Theme.yellow : Color.white.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(changed
+            ? (plannedTrack.map { t("Changement de voie : voie %@ au lieu de %@", track, $0) } ?? t("Changement de voie : voie %@", track))
+            : Formatting.platformText(track, mode: mode))
+    }
+}
+
+/// Affiche "Voie 4" en gris, ou en jaune avec une icône si la voie a changé.
+struct TrackLabelStyle: LabelStyle {
+    let changed: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 3) {
+            if changed { configuration.icon }
+            configuration.title
+        }
+        .font(.caption.weight(changed ? .bold : .regular))
+        .foregroundStyle(changed ? Theme.yellow : Color.secondary)
     }
 }

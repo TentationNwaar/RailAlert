@@ -7,6 +7,7 @@ import SwiftUI
 struct RedAlertWidgetBundle: WidgetBundle {
     var body: some Widget {
         TripStatusWidget()
+        TripLiveActivity()
     }
 }
 
@@ -74,7 +75,7 @@ struct TripProvider: TimelineProvider {
     }
 
     private func makeEntry() async -> TripEntry {
-        let trips = TripStore.shared.loadTrips()
+        let trips = Premium.monitoredTrips(TripStore.shared.loadTrips())
         guard let trip = TripChecker.mostRelevantTrip(in: trips) else {
             return TripEntry(date: .now, report: nil, message: t("Ajoute un trajet dans Red Alert"))
         }
@@ -150,6 +151,8 @@ struct TripWidgetView: View {
             default: small
             }
         }
+        // Toucher le widget ouvre le trajet dans l'app.
+        .widgetURL(report.map { AppConfig.tripURL($0.trip.id) })
         .containerBackground(for: .widget) {
             LinearGradient(colors: [Color(red: 0.17, green: 0.22, blue: 0.32),
                                     Color(red: 0.07, green: 0.09, blue: 0.15)],

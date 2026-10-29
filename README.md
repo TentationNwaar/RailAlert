@@ -32,9 +32,34 @@ Pour revoir le premier lancement pendant le développement : supprimer l'app de 
 - Les messages officiels (opentransportdata.swiss) sont affichés dans la langue choisie ; le classement (travaux, interruption) se fait toujours sur la version française.
 - Le romanche n'est pas proposé : les messages officiels n'existent pas dans cette langue et le traducteur d'Apple ne le prend pas en charge.
 
+## Fonctions de suivi
+
+- **Horaires officiels OJP 2.0** (`Shared/OJPService.swift`) : retard exact, voie prévue et réelle, affluence, gares traversées, suppressions.
+- **Changement de voie** : notification « Le train de 07:23 part de la voie 4 (au lieu de 1) ».
+- **Alternative** : quand le train est supprimé, en retard ou le tronçon interrompu, l'app propose le train qui arrive le plus tôt (carte du trajet, notification, Live Activity, Siri).
+- **Affluence** : 1 à 3 silhouettes (vert, jaune, rouge) sur la carte du trajet et dans les départs.
+- **Suivi en direct (Live Activity)** : bouton dans le détail d'un trajet ; écran verrouillé + Dynamic Island.
+- **Raccourcis Siri** : « Mon train est à l'heure avec Red Alert » (phrases dans les 4 langues, `RedAlert/AppShortcuts.xcstrings`).
+- **Départs d'une gare** : toucher une gare d'un tronçon sur la carte, ou les boutons « Départs de … » dans le détail d'un trajet.
+- **Ponctualité sur 30 jours** : dans le détail d'un trajet (basée sur les vérifications faites par l'app peu avant le départ).
+- **Accessibilité** : descriptions VoiceOver sur les triangles, boutons ronds, voies, affluence, jours ; heures qui suivent la taille de texte choisie.
+
+## Serveur push
+
+Dossier `Server/` : serveur Node.js qui surveille les trajets chaque minute et envoie les alertes par push (voir `Server/README.md`). Nécessite le compte Apple Developer payant. Tant que `serverURL` est vide dans `Shared/Secrets.swift`, l'app fonctionne seule (notifications locales).
+
+## Confidentialité et publication
+
+- `RedAlert/PrivacyInfo.xcprivacy` et `RedAlertWidget/PrivacyInfo.xcprivacy` : déclarations exigées par Apple (pas de tracking ; jeton push et trajets envoyés au serveur pour le fonctionnement).
+- `Legal/politique-de-confidentialite.md` et `Legal/privacy-policy.md` : politique à compléter (nom, contact, hébergeur) puis à publier en ligne ; son adresse est demandée dans App Store Connect.
+- Conditions des sources (vérifiées le 30.09.2026) :
+  - **opentransportdata.swiss** : usage dans une app publiée autorisé, **citer opentransportdata.swiss comme source** (fait dans les réglages et le tableau des départs), aucune responsabilité des CFF.
+  - **search.ch** : ses conditions générales interdisent l'accès automatisé et l'usage commercial ; il a été retiré de l'app.
+  - **Marque CFF** : ne pas utiliser « CFF », « SBB » ni leur logo dans le nom de l'app, l'icône ou les captures de l'App Store. La mention « n'est pas une application officielle des CFF » est présente dans les réglages.
+
 ## Clé API (développeur uniquement)
 
-Les perturbations et les travaux viennent d'opentransportdata.swiss (produit LA-GTFS-SA). La clé est intégrée dans `RedAlert/Settings/Secrets.swift`, fichier ignoré par git : ne pas le publier. Les utilisateurs n'ont rien à configurer.
+Les perturbations et les travaux viennent d'opentransportdata.swiss (produit LA-GTFS-SA). La clé est intégrée dans `Shared/Secrets.swift`, fichier ignoré par git : ne pas le publier. Les utilisateurs n'ont rien à configurer.
 
 Si la clé est vide ou refusée, l'app utilise automatiquement data.sbb.ch (perturbations seulement, textes traduits sur l'iPhone).
 
@@ -47,7 +72,7 @@ Bouton « filtres » en haut de la carte : types d'alertes (perturbations, trava
 ## Alertes sur les trajets
 
 Pour chaque trajet, l'app surveille :
-- le train lui-même (search.ch) : retard au-dessus du seuil choisi, suppression ;
+- le train lui-même (OJP 2.0) : retard au-dessus du seuil choisi, suppression ;
 - les perturbations et travaux du réseau qui touchent son parcours (`RedAlert/Services/TripAlertMatcher.swift`) :
   1. **lieu** : le train roule directement entre deux gares citées par l'alerte (deux arrêts consécutifs du trajet), ou l'alerte vise une seule gare du trajet nommée dans son titre ;
   2. **moment** : une des plages horaires de l'alerte recouvre l'horaire du train (± 10 min). Des travaux de nuit ne concernent donc pas le train de 7 h.
@@ -69,25 +94,45 @@ Le résultat apparaît sur la carte du trajet (bordure jaune ou rouge), dans le 
 | `RedAlert/Trips/` | Liste, création et détail des trajets |
 | `RedAlert/Services/` | Perturbations et travaux (deux sources), vérification en arrière-plan, notifications |
 | `RedAlert/Onboarding/` | Splash screen, choix de la langue, tutoriel à bulles |
-| `RedAlert/Settings/` | Écran de réglages (notifications, sources) et clé API privée |
+| `RedAlert/Settings/` | Écran de réglages (langue, notifications, aide, sources) |
+| `RedAlert/LiveActivity/` | Démarrage et mise à jour du suivi en direct |
+| `RedAlert/Stations/` | Tableau des départs d'une gare |
+| `RedAlert/Intents/` | Raccourcis Siri |
+| `Server/` | Serveur push (Node.js) |
+| `Legal/` | Politique de confidentialité (FR, EN) |
 | `RedAlertWidget/` | Widget écran verrouillé et écran d'accueil |
 | `Config/` | Info.plist et fichiers d'autorisations (entitlements) |
 
 Les dossiers sont « synchronisés » : tout fichier `.swift` ajouté dans un de ces dossiers est compilé automatiquement.
 
-## Sources de données (sans clé API)
+## Sources de données
 
 | Source | Utilisation | Limite |
 |---|---|---|
 | data.sbb.ch — `rail-traffic-information` | Perturbations officielles CFF (carte, sans clé) | Mise à jour toutes les 5 min, textes en anglais |
 | opentransportdata.swiss — `gtfs-sa` | Perturbations + travaux, en français (avec clé) | 2 requêtes par minute |
 | data.sbb.ch — `dienststellen` | Coordonnées et type des arrêts (train / bus) | Usage raisonnable |
-| search.ch — `route.json` | Retard et suppression des trains d'un trajet | 1000 recherches par jour |
+| opentransportdata.swiss — OJP 2.0 | Horaires en temps réel, voies, affluence, départs d'une gare | Selon le plan de la clé |
 | transport.opendata.ch — `locations` | Recherche de gares, coordonnées GPS | Usage raisonnable |
 
 ## Limites connues de cette version
 
 - Les vérifications en arrière-plan sont lancées quand iOS le décide (souvent toutes les 15 à 60 min). Pour des alertes à la minute près, il faudra un serveur qui envoie des notifications push (nécessite le compte Apple Developer payant).
-- search.ch ne donne que les gares où le train s'arrête : une perturbation limitée à une portion traversée sans arrêt peut ne pas être détectée.
+- L'horaire ne donne que les gares où le train s'arrête : une perturbation limitée à une portion traversée sans arrêt peut ne pas être détectée.
 - Le widget se rafraîchit toutes les 10 min quand le trajet approche, sinon toutes les 30 min (quota imposé par iOS).
 - Seules les perturbations dont les gares sont reconnues apparaissent sur la carte. Les autres restent visibles dans la liste.
+
+## Red Alert+ (modèle freemium)
+
+| Gratuit | Red Alert+ |
+|---|---|
+| Carte, filtres, liste, départs en gare, Siri, widget | Tout le gratuit |
+| 1 trajet surveillé (notifications locales) | Trajets illimités, serveur push |
+| | Suivi en direct (Live Activity), alternatives, ponctualité |
+
+- Produits (identifiants à reprendre tels quels dans App Store Connect) :
+  - `ch.maxweyermann.RedAlert.plus.monthly` : abonnement mensuel, CHF 3.–, essai gratuit de 7 jours, groupe « Red Alert+ » ;
+  - `ch.maxweyermann.RedAlert.plus.lifetime` : achat non consommable, CHF 25.–.
+- Code : `Shared/Premium.swift` (règles gratuit / payant), `RedAlert/Store/StoreManager.swift` (StoreKit 2), `RedAlert/Store/PaywallView.swift` (écran d'achat).
+- Test dans Xcode sans compte payant : `RedAlert/RedAlert.storekit` (Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration).
+- Si l'abonnement se termine : les trajets restent enregistrés, seul le premier est surveillé, et le serveur arrête de surveiller l'appareil.
