@@ -1,0 +1,5 @@
+.env
+data/
+test-data/
+*.p8
+node_modules/

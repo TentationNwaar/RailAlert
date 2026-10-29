@@ -30,6 +30,8 @@ enum TripChecker {
 
         let report = TripReport(trip: trip, focus: focus, upcoming: upcoming, fetchedAt: now)
         TripStore.shared.saveReport(report)
+        // Historique de ponctualité (seulement si le train part bientôt ou vient de partir).
+        if let focus { TripHistoryStore.shared.record(focus, tripID: trip.id, now: now) }
         return report
     }
 

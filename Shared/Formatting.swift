@@ -34,8 +34,9 @@ enum Formatting {
         switch state {
         case .onTime: return t("À l'heure")
         case .delayed(let minutes): return t("+%ld min", minutes)
+        case .early(let minutes): return t("%ld min d'avance", minutes)
         case .cancelled: return t("Supprimé")
-        case .unknown: return t("Pas d'info temps réel")
+        case .unknown: return t("Horaire prévu")
         }
     }
 
@@ -44,9 +45,24 @@ enum Formatting {
         switch state {
         case .onTime: return "OK"
         case .delayed(let minutes): return "+\(minutes)'"
+        case .early(let minutes): return "−\(minutes)'"
         case .cancelled: return t("Supprimé")
         case .unknown: return "—"
         }
+    }
+
+    /// « Voie 7 » pour un train, « Quai B » pour un bus, un tram ou un bateau.
+    static func platformText(_ track: String, mode: String) -> String {
+        mode == "rail" ? t("Voie %@", track) : t("Quai %@", track)
+    }
+
+    /// Résumé d'un train de remplacement : "07:53 IR 95 · arrivée 08:17 · voie 2".
+    static func alternativeText(_ connection: ConnectionInfo) -> String {
+        var text = time(connection.expectedDeparture)
+        if let line = connection.line { text += " " + line }
+        text += " · " + t("arrivée %@", time(connection.expectedArrival))
+        if let track = connection.track { text += " · " + t("voie %@", track) }
+        return text
     }
 
     /// Nom de symbole SF Symbols pour un état.

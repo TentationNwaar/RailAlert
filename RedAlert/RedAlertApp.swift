@@ -8,6 +8,8 @@ struct RedAlertApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var trips = TripsModel()
+    /// Démarré dès le lancement pour ne manquer aucun achat ou renouvellement.
+    private let store = StoreManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -80,8 +82,12 @@ struct AppRootView: View {
             }
         }
         .environmentObject(tutorial)
+        // Lien redalert://trip/… (widget, suivi en direct).
+        .onOpenURL { AppRouter.shared.handle($0) }
         .onChange(of: languageCode) { _, _ in
             WidgetCenter.shared.reloadAllTimelines()
+            // Le serveur envoie les notifications dans la langue choisie.
+            Task { await ServerSync.sync() }
         }
     }
 }
@@ -89,15 +95,21 @@ struct AppRootView: View {
 /// Barre d'onglets : Carte / Trajets.
 struct RootView: View {
     @EnvironmentObject private var tutorial: TutorialController
+    @ObservedObject private var router = AppRouter.shared
 
     var body: some View {
+        // « Mes trajets » d'abord : c'est l'écran qui intéresse le plus au quotidien.
         TabView(selection: $tutorial.selectedTab) {
-            AlertMapView()
-                .tabItem { Label(t("Carte"), systemImage: "map.fill") }
-                .tag(TutorialController.Tab.map)
             TripsView()
                 .tabItem { Label(t("Mes trajets"), systemImage: "tram.fill") }
                 .tag(TutorialController.Tab.trips)
+            AlertMapView()
+                .tabItem { Label(t("Carte"), systemImage: "map.fill") }
+                .tag(TutorialController.Tab.map)
+        }
+        // Un trajet doit s'ouvrir (notification, widget) : on passe sur l'onglet Trajets.
+        .onChange(of: router.pendingTripID, initial: true) { _, id in
+            if id != nil { tutorial.selectedTab = .trips }
         }
     }
 }
@@ -107,12 +119,37 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Serveur push (si configuré dans Secrets.swift) : demande d'un jeton à Apple.
+        ServerSync.registerForPushIfConfigured()
         return true
+    }
+
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        ServerSync.setDeviceToken(deviceToken)
+        Task { await ServerSync.sync() }
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        // Normal tant que la capacité "Push Notifications" n'est pas activée (compte Apple Developer payant).
+        print("Push : \(error.localizedDescription)")
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .list, .sound])
+    }
+
+    /// Notification touchée : on ouvre le trajet concerné.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        if let raw = (info["tripID"] ?? info["tripId"]) as? String, let id = UUID(uuidString: raw) {
+            Task { @MainActor in AppRouter.shared.openTrip(id) }
+        }
+        completionHandler()
     }
 }

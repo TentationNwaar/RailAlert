@@ -12,17 +12,21 @@ final class TutorialController: ObservableObject {
     enum Target: Hashable { case list, filters, settings }
 
     enum Step: Int, CaseIterable {
-        case welcome, markers, filters, list, settings, lockScreen, trips
+        case welcome, markers, stations, filters, list, settings, monitoring, liveActivity, siri, lockScreen, trips
 
         var title: String {
             switch self {
             case .welcome: return t("Bienvenue sur Red Alert")
             case .markers: return t("La carte")
+            case .stations: return t("Départs en gare")
             case .filters: return t("Filtres")
             case .list: return t("Liste des alertes")
             case .settings: return t("Réglages")
-            case .trips: return t("Tes trajets")
+            case .monitoring: return t("Tout est surveillé")
+            case .liveActivity: return t("Suivi en direct")
+            case .siri: return t("Demande à Siri")
             case .lockScreen: return t("Sur l'écran verrouillé")
+            case .trips: return t("Tes trajets")
             }
         }
 
@@ -30,11 +34,15 @@ final class TutorialController: ObservableObject {
             switch self {
             case .welcome: return t("Red Alert surveille le réseau ferroviaire suisse et te prévient quand tes trajets sont touchés.")
             case .markers: return t("Chaque triangle est une alerte : rouge = plus aucun train, jaune = service restreint. Le marteau indique des travaux. Touche un triangle pour zoomer et lire le détail.")
+            case .stations: return t("Les points blancs sur la carte sont des gares. Touches-en un pour voir les prochains départs : heure, retard, voie et affluence. Les départs sont aussi accessibles depuis chaque trajet.")
             case .filters: return t("Choisis ce que tu veux voir (perturbations, travaux) et ta région. Tes choix sont gardés.")
             case .list: return t("Toutes les alertes affichées, sous forme de liste. Touche-en une pour la voir sur la carte.")
             case .settings: return t("Langue, notifications et sources des données. Tu peux aussi relancer ce tutoriel d'ici.")
-            case .trips: return t("Ajoute les trajets que tu fais souvent, avec ton heure habituelle. Red Alert surveille le train, les perturbations et les travaux sur tout le parcours.")
+            case .monitoring: return t("Pour chacun de tes trajets, Red Alert vérifie en continu :")
+            case .liveActivity: return t("Dans le détail d'un trajet, touche « Suivre en direct sur l'écran verrouillé ». L'heure, le retard et la voie restent affichés sur l'écran verrouillé et dans la Dynamic Island jusqu'à l'arrivée.")
+            case .siri: return t("Sans ouvrir l'app, demande à Siri si ton train est à l'heure. Siri répond avec le retard, la voie, les travaux sur le parcours et une alternative si besoin. Dis par exemple :")
             case .lockScreen: return t("Autorise les notifications pour être prévenu, et ajoute le widget « Mon trajet » à ton écran verrouillé pour voir l'état de ton train d'un coup d'œil.")
+            case .trips: return t("Ajoute les trajets que tu fais souvent, avec ton heure habituelle. Red Alert surveille le train, les perturbations et les travaux sur tout le parcours.")
             }
         }
 
@@ -48,13 +56,15 @@ final class TutorialController: ObservableObject {
             }
         }
 
-        var tab: Tab { self == .trips ? .trips : .map }
+        /// Les étapes sur les trajets s'affichent sur l'onglet « Mes trajets ».
+        var tab: Tab { rawValue >= Step.monitoring.rawValue ? .trips : .map }
 
         var isLast: Bool { self == Step.allCases.last }
     }
 
     @Published var step: Step?
-    @Published var selectedTab: Tab = .map
+    /// L'app s'ouvre sur « Mes trajets ».
+    @Published var selectedTab: Tab = .trips
     /// Position à l'écran des éléments à mettre en évidence (mise à jour par `.tutorialTarget`).
     @Published var frames: [Target: CGRect] = [:]
     /// Demande à l'onglet Trajets d'ouvrir le formulaire d'ajout (bouton "Ajouter mon premier trajet").
@@ -90,7 +100,10 @@ final class TutorialController: ObservableObject {
     }
 
     func finish() {
-        withAnimation(.easeInOut(duration: 0.3)) { step = nil }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            step = nil
+            selectedTab = .trips
+        }
         UserDefaults.standard.set(true, forKey: Self.completedKey)
     }
 }
@@ -154,6 +167,7 @@ struct TutorialOverlay: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { } // bloque les touches sur l'app pendant le tutoriel
+                        .accessibilityHidden(true)
 
                     if let hole {
                         // Anneau qui pulse + zone touchable : toucher l'élément fait avancer le tutoriel.
@@ -163,11 +177,13 @@ struct TutorialOverlay: View {
                             .scaleEffect(pulse ? 1.12 : 1)
                             .opacity(pulse ? 0.3 : 1)
                             .position(x: hole.midX, y: hole.midY)
+                            .accessibilityHidden(true)
                         Color.clear
                             .frame(width: hole.width, height: hole.height)
                             .contentShape(Rectangle())
                             .position(x: hole.midX, y: hole.midY)
                             .onTapGesture { tutorial.next() }
+                            .accessibilityHidden(true) // avec VoiceOver, on avance avec « Suivant »
                     }
 
                     bubbleLayout(step: step, hole: hole, size: proxy.size)
@@ -176,6 +192,7 @@ struct TutorialOverlay: View {
             .ignoresSafeArea()
             .transition(.opacity)
             .onAppear {
+                guard !Motion.isReduced else { return }
                 withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) { pulse = true }
             }
         }
@@ -184,11 +201,20 @@ struct TutorialOverlay: View {
     /// Place la bulle sous l'élément s'il est en haut de l'écran, au-dessus sinon, au centre s'il n'y en a pas.
     @ViewBuilder
     private func bubbleLayout(step: TutorialController.Step, hole: CGRect?, size: CGSize) -> some View {
-        let bubble = TutorialBubble(step: step, pointsToTarget: hole != nil)
+        // Avec un très grand texte, la bulle peut défiler au lieu de sortir de l'écran.
+        let bubble = ViewThatFits(in: .vertical) {
+            TutorialBubble(step: step, pointsToTarget: hole != nil)
+            ScrollView {
+                TutorialBubble(step: step, pointsToTarget: hole != nil)
+            }
+        }
             .frame(maxWidth: 380)
             .padding(.horizontal, 20)
             .id(step)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
+            // VoiceOver reste dans la bulle tant que le tutoriel est ouvert.
+            .accessibilityElement(children: .contain)
+            .accessibilityAddTraits(.isModal)
 
         if let hole {
             if hole.midY < size.height / 2 {
@@ -229,11 +255,13 @@ private struct TutorialBubble: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120)
+                    .accessibilityHidden(true)
                     .frame(maxWidth: .infinity)
             }
 
             Text(step.title)
                 .font(.title3.bold())
+                .accessibilityAddTraits(.isHeader)
             Text(step.text)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.85))
@@ -301,6 +329,61 @@ private struct TutorialBubble: View {
                 legend(color: Theme.yellow, symbol: "exclamationmark", text: t("Restreint"))
                 legend(color: Theme.yellow, symbol: "hammer.fill", text: t("Travaux"))
             }
+        case .stations:
+            // Aperçu d'une ligne du tableau des départs.
+            HStack(spacing: 10) {
+                Text("07:23").font(.headline.monospacedDigit())
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("IR 90 · Brig").font(.subheadline.weight(.semibold))
+                    HStack(spacing: 6) {
+                        Text(t("+%ld min", 3)).font(.caption.weight(.semibold)).foregroundStyle(Theme.yellow)
+                        OccupancyView(occupancy: .medium, compact: true)
+                    }
+                }
+                Spacer()
+                VStack(spacing: 0) {
+                    Text(t("Voie")).font(.caption2).foregroundStyle(.secondary)
+                    Text("3").font(.headline).foregroundStyle(Theme.yellow)
+                }
+            }
+            .padding(12)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+            .accessibilityHidden(true)
+        case .monitoring:
+            VStack(alignment: .leading, spacing: 9) {
+                feature("clock.badge.exclamationmark.fill", Theme.red, t("Retards et suppressions"))
+                feature("signpost.right.fill", Theme.yellow, t("Changements de voie"))
+                feature("arrow.triangle.branch", Theme.accent, t("Un autre train si le tien a un problème"))
+                feature("person.2.fill", Theme.green, t("Affluence dans le train"))
+                feature("hammer.fill", Theme.yellow, t("Travaux et perturbations sur le parcours"))
+                feature("chart.bar.fill", .white, t("Ponctualité sur 30 jours"))
+            }
+        case .liveActivity:
+            // Aperçu de la Dynamic Island.
+            HStack(spacing: 10) {
+                Image(systemName: "tram.fill").foregroundStyle(Theme.red)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Montreux → Lausanne").font(.caption.weight(.semibold))
+                    Text("07:23 · \(t("Voie")) 1").font(.caption2).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(t("+%ld min", 4)).font(.subheadline.weight(.bold)).foregroundStyle(Theme.yellow)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.black, in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
+            .accessibilityHidden(true)
+        case .siri:
+            HStack(spacing: 10) {
+                Image(systemName: "waveform").font(.title3).foregroundStyle(Theme.accent)
+                Text(t("« Mon train est à l'heure avec Red Alert »"))
+                    .font(.subheadline.italic())
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
         case .trips:
             Button {
                 // Termine le tutoriel et ouvre directement le formulaire d'ajout.
@@ -344,6 +427,17 @@ private struct TutorialBubble: View {
             .disabled(notificationsOn)
         default:
             EmptyView()
+        }
+    }
+
+    private func feature(_ symbol: String, _ color: Color, _ text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            Text(text).font(.subheadline)
         }
     }
 

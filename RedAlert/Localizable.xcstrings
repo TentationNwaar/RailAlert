@@ -1,0 +1,170 @@
+{
+  "sourceLanguage" : "fr",
+  "strings" : {
+    "%@" : {
+
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%lld %%" : {
+
+    },
+    "•" : {
+
+    },
+    "→ %@" : {
+
+    },
+    "+%lld" : {
+
+    },
+    "+%lld'" : {
+
+    },
+    "3" : {
+
+    },
+    "07:23" : {
+
+    },
+    "07:23 · %@ 1" : {
+
+    },
+    "07:23 · IR 95 · 1" : {
+
+    },
+    "Indique si ton train est à l'heure, en retard ou supprimé, et s'il y a des travaux sur le parcours." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sagt dir, ob dein Zug pünktlich, verspätet oder ausgefallen ist und ob es Bauarbeiten auf der Strecke gibt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tells you whether your train is on time, delayed or cancelled, and whether there is construction work on the route."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indique si ton train est à l'heure, en retard ou supprimé, et s'il y a des travaux sur le parcours."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indica se il tuo treno è in orario, in ritardo o soppresso e se ci sono lavori sul percorso."
+          }
+        }
+      }
+    },
+    "IR 90 · Brig" : {
+
+    },
+    "Mon trajet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Strecke"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My trip"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mon trajet"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il mio tragitto"
+          }
+        }
+      }
+    },
+    "Montreux → Lausanne" : {
+
+    },
+    "Red Alert" : {
+
+    },
+    "Red Alert+" : {
+
+    },
+    "Trajet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strecke"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trip"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trajet"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tragitto"
+          }
+        }
+      }
+    },
+    "Vérifier mon trajet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Strecke prüfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check my trip"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier mon trajet"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controlla il mio tragitto"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

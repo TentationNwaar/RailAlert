@@ -78,6 +78,18 @@ final class TripStore {
         defaults.set(dict, forKey: notifiedAlertsKey)
     }
 
+    // MARK: Petites valeurs par trajet (voie vue en dernier, dernière notification de voie...)
+
+    func value(_ name: String, for tripID: UUID) -> String? {
+        (defaults.dictionary(forKey: "values." + name) as? [String: String])?[tripID.uuidString]
+    }
+
+    func setValue(_ value: String?, _ name: String, for tripID: UUID) {
+        var dict = (defaults.dictionary(forKey: "values." + name) as? [String: String]) ?? [:]
+        dict[tripID.uuidString] = value
+        defaults.set(dict, forKey: "values." + name)
+    }
+
     // MARK: Anti-doublon des notifications
 
     /// Dernier état notifié pour un trajet (évite d'envoyer 10 fois la même alerte).

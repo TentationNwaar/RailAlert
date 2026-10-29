@@ -38,6 +38,8 @@ final class TripsModel: ObservableObject {
         reports[trip.id] = nil
         networkAlerts[trip.id] = nil
         TripStore.shared.saveNetworkAlerts(networkAlerts)
+        TripHistoryStore.shared.removeHistory(for: trip.id)
+        Task { await LiveActivityManager.stop(tripID: trip.id) }
         persist()
     }
 
@@ -49,23 +51,34 @@ final class TripsModel: ObservableObject {
     private func persist() {
         TripStore.shared.saveTrips(trips)
         WidgetCenter.shared.reloadAllTimelines()
+        // Serveur push (s'il est configuré) : il surveille les mêmes trajets.
+        Task { await ServerSync.sync() }
     }
 
     // MARK: Rafraîchissement
 
-    func refreshAll() async {
+    /// Dernière actualisation complète : évite de refaire les mêmes requêtes à chaque retour dans l'app
+    /// (économise la batterie, les données mobiles et le quota de l'API).
+    private var lastFullRefresh: Date?
+
+    func refreshAll(force: Bool = false) async {
+        if !force, let last = lastFullRefresh, Date().timeIntervalSince(last) < 60 { return }
+        lastFullRefresh = .now
         await withTaskGroup(of: Void.self) { group in
-            for trip in trips {
+            // Version gratuite : seul le premier trajet est surveillé.
+            for trip in Premium.monitoredTrips(trips) {
                 group.addTask { await self.refreshSchedule(trip) }
             }
         }
         await updateNetworkAlerts()
+        await LiveActivityManager.updateAll(reports: reports, networkAlerts: networkAlerts)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
     func refresh(_ trip: Trip) async {
         await refreshSchedule(trip)
         await updateNetworkAlerts()
+        await LiveActivityManager.updateAll(reports: reports, networkAlerts: networkAlerts)
         WidgetCenter.shared.reloadAllTimelines()
     }
 
@@ -85,6 +98,6 @@ final class TripsModel: ObservableObject {
     /// Croise les perturbations et travaux du réseau avec les gares et l'horaire de chaque trajet.
     private func updateNetworkAlerts() async {
         guard let result = try? await AlertCache.shared.result() else { return }
-        networkAlerts = TripAlertMatcher.matchAll(trips: trips, reports: reports, alerts: result.alerts)
+        networkAlerts = TripAlertMatcher.matchAll(trips: Premium.monitoredTrips(trips), reports: reports, alerts: result.alerts)
     }
 }
