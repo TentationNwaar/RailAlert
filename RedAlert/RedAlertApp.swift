@@ -26,6 +26,8 @@ struct RedAlertApp: App {
                 WidgetCenter.shared.reloadAllTimelines()
             case .active:
                 Task { await trips.refreshAll() }
+                // Achats : on revérifie à chaque retour dans l'app (renouvellement, remboursement...).
+                Task { await StoreManager.shared.refreshEntitlements() }
             default:
                 break
             }

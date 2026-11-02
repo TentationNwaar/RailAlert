@@ -11,6 +11,25 @@ struct TripsView: View {
     /// Pile de navigation : permet d'ouvrir un trajet depuis une notification ou le widget.
     @State private var path: [UUID] = []
     @State private var savedCount = 0
+    /// Trajet en cours de modification (gares, heure, jours et seuil déjà remplis).
+    @State private var editingTrip: Trip?
+    /// Trajet retour prérempli (gares inversées, mêmes jours et réglages).
+    @State private var returnTrip: Trip?
+
+    /// Trajet retour : gares inversées, mêmes jours, mêmes alertes ; l'heure est à choisir.
+    private func makeReturnTrip(from trip: Trip) {
+        guard store.isPremium || model.trips.count < Premium.freeTripLimit else {
+            showPaywall = true
+            return
+        }
+        var back = Trip(from: trip.to, to: trip.from)
+        back.weekdays = trip.weekdays
+        back.notificationsEnabled = trip.notificationsEnabled
+        back.delayThreshold = trip.delayThreshold
+        back.usualHour = trip.usualHour
+        back.usualMinute = trip.usualMinute
+        returnTrip = back
+    }
 
     /// Version gratuite : 1 trajet. Au-delà, on propose Red Alert+.
     private func addTrip() {
@@ -42,6 +61,18 @@ struct TripsView: View {
             }
             .sheet(isPresented: $showEditor) {
                 TripEditorView {
+                    model.add($0)
+                    savedCount += 1
+                }
+            }
+            .sheet(item: $editingTrip) { trip in
+                TripEditorView(trip: trip) {
+                    model.update($0)
+                    savedCount += 1
+                }
+            }
+            .sheet(item: $returnTrip) { trip in
+                TripEditorView(trip: trip, title: t("Trajet retour")) {
                     model.add($0)
                     savedCount += 1
                 }
@@ -96,6 +127,22 @@ struct TripsView: View {
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 .swipeActions {
+                    Button(role: .destructive) { model.delete(trip) } label: {
+                        Label(t("Supprimer"), systemImage: "trash")
+                    }
+                    Button { editingTrip = trip } label: {
+                        Label(t("Modifier"), systemImage: "pencil")
+                    }
+                    .tint(Theme.accent)
+                }
+                // Appui long : modifier, créer le retour, supprimer.
+                .contextMenu {
+                    Button { editingTrip = trip } label: {
+                        Label(t("Modifier"), systemImage: "pencil")
+                    }
+                    Button { makeReturnTrip(from: trip) } label: {
+                        Label(t("Créer le trajet retour"), systemImage: "arrow.uturn.left")
+                    }
                     Button(role: .destructive) { model.delete(trip) } label: {
                         Label(t("Supprimer"), systemImage: "trash")
                     }

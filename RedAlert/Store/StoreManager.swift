@@ -35,15 +35,43 @@ final class StoreManager: ObservableObject {
         // Achats faits ailleurs (autre appareil, renouvellement, remboursement, achat validé plus tard par un parent).
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
-                if case .verified(let transaction) = update {
+                if let transaction = Self.accepted(update) {
                     await transaction.finish()
                 }
                 await self?.refreshEntitlements()
             }
         }
         Task {
-            await refreshEntitlements()
+            // Ordre important : en test local (fichier .storekit), la liste des achats peut rester vide
+            // tant que les produits n'ont pas été chargés une première fois.
             await loadProducts()
+            await finishPendingTransactions()
+            await refreshEntitlements()
+        }
+    }
+
+    /// Termine les achats restés « en cours » (app fermée pendant un achat, par exemple).
+    private func finishPendingTransactions() async {
+        for await result in Transaction.unfinished {
+            if let transaction = Self.accepted(result) {
+                await transaction.finish()
+            }
+        }
+    }
+
+    /// Transaction acceptée : vérifiée par Apple. En développement uniquement, on accepte aussi une transaction
+    /// non vérifiée (cas possible avec le magasin de test d'Xcode), en l'indiquant dans la console.
+    private static func accepted(_ result: VerificationResult<Transaction>) -> Transaction? {
+        switch result {
+        case .verified(let transaction):
+            return transaction
+        case .unverified(let transaction, let error):
+            #if DEBUG
+            print("StoreKit : transaction \(transaction.productID) non vérifiée (\(error)) — acceptée en mode développement.")
+            return transaction
+            #else
+            return nil
+            #endif
         }
     }
 
@@ -92,7 +120,7 @@ final class StoreManager: ObservableObject {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                guard case .verified(let transaction) = verification else {
+                guard let transaction = Self.accepted(verification) else {
                     errorMessage = t("L'achat n'a pas pu être vérifié.")
                     return false
                 }
@@ -148,14 +176,29 @@ final class StoreManager: ObservableObject {
     /// Recalcule l'accès à partir des achats valides (abonnement en cours ou achat à vie).
     func refreshEntitlements() async {
         var plan: Plan?
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result, transaction.revocationDate == nil else { continue }
+        func record(_ transaction: Transaction) {
+            guard transaction.revocationDate == nil else { return }
+            if let expiration = transaction.expirationDate, expiration < .now { return }
             switch transaction.productID {
             case Self.lifetimeID: plan = .lifetime
             case Self.monthlyID where plan == nil: plan = .monthly
             default: break
             }
         }
+        for await result in Transaction.currentEntitlements {
+            if let transaction = Self.accepted(result) { record(transaction) }
+        }
+        // Deuxième vérification, produit par produit (plus fiable juste après le lancement).
+        if plan == nil {
+            for productID in [Self.lifetimeID, Self.monthlyID] {
+                if let result = await Transaction.latest(for: productID), let transaction = Self.accepted(result) {
+                    record(transaction)
+                }
+            }
+        }
+        #if DEBUG
+        print("StoreKit : droits recalculés → \(plan.map { "\($0)" } ?? "aucun achat actif")")
+        #endif
 
         var active = plan != nil
         #if DEBUG

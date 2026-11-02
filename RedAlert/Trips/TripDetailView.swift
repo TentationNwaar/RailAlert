@@ -27,6 +27,13 @@ struct TripDetailView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle(trip?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if trip != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(t("Modifier")) { showEditor = true }
+                }
+            }
+        }
     }
 
     private func content(_ trip: Trip) -> some View {
