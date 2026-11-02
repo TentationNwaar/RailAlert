@@ -6,6 +6,8 @@ struct TripEditorView: View {
 
     private let original: Trip?
     private let onSave: (Trip) -> Void
+    /// Titre imposé (ex. « Trajet retour ») ; sinon « Nouveau trajet » ou « Modifier le trajet ».
+    private let customTitle: String?
 
     @State private var from: Station?
     @State private var to: Station?
@@ -15,9 +17,11 @@ struct TripEditorView: View {
     @State private var notify: Bool
     @State private var threshold: Int
 
-    init(trip: Trip? = nil, onSave: @escaping (Trip) -> Void) {
+    /// `trip` : trajet à modifier, ou modèle prérempli (ex. trajet retour) quand `title` est donné.
+    init(trip: Trip? = nil, title: String? = nil, onSave: @escaping (Trip) -> Void) {
         self.original = trip
         self.onSave = onSave
+        self.customTitle = title
         _from = State(initialValue: trip?.from)
         _to = State(initialValue: trip?.to)
         _hasUsualTime = State(initialValue: trip?.hasUsualTime ?? true)
@@ -78,7 +82,7 @@ struct TripEditorView: View {
                     Text(t("Une suppression déclenche toujours une alerte."))
                 }
             }
-            .navigationTitle(original == nil ? t("Nouveau trajet") : t("Modifier le trajet"))
+            .navigationTitle(customTitle ?? (original == nil ? t("Nouveau trajet") : t("Modifier le trajet")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

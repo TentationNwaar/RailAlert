@@ -394,5 +394,10 @@ enum Translations {
         ["%ld min à pied", "%ld Min. zu Fuss", "%ld min a piedi", "%ld min walk"],
         ["Quai", "Kante", "Corsia", "Stop"],
         ["Quai %@", "Kante %@", "Corsia %@", "Stop %@"],
+
+        // MARK: Modifier un trajet
+        ["Modifier", "Bearbeiten", "Modifica", "Edit"],
+        ["Trajet retour", "Rückfahrt", "Viaggio di ritorno", "Return trip"],
+        ["Créer le trajet retour", "Rückfahrt erstellen", "Crea il viaggio di ritorno", "Create return trip"],
     ]
 }
