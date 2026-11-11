@@ -1,4 +1,4 @@
-# Image du serveur Red Alert (aucune dépendance npm).
+# Image du serveur Rail Alert (aucune dépendance npm).
 FROM node:22-alpine
 WORKDIR /app
 COPY package.json ./

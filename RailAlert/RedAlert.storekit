@@ -1,0 +1,76 @@
+{
+  "identifier" : "5E7C1A2B",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "25.0",
+      "familyShareable" : false,
+      "internalID" : "6740000001",
+      "localizations" : [
+        {
+          "description" : "Accès à vie à Rail Alert+, sans abonnement.",
+          "displayName" : "Rail Alert+ à vie",
+          "locale" : "fr"
+        }
+      ],
+      "productID" : "ch.maxweyermann.RedAlert.plus.lifetime",
+      "referenceName" : "Rail Alert+ lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "fr_CH",
+    "_storefront" : "CHE",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21600001",
+      "localizations" : [
+
+      ],
+      "name" : "Rail Alert+",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3.0",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000002",
+          "introductoryOffer" : {
+            "internalID" : "6740000003",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "Trajets illimités, suivi en direct, alternatives et ponctualité.",
+              "displayName" : "Rail Alert+ mensuel",
+              "locale" : "fr"
+            }
+          ],
+          "productID" : "ch.maxweyermann.RedAlert.plus.subscription.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Rail Alert+ monthly",
+          "subscriptionGroupID" : "21600001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

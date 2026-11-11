@@ -1,4 +1,4 @@
-# Serveur push Red Alert
+# Serveur push Rail Alert
 
 Le serveur surveille les trajets de chaque utilisateur **chaque minute** et envoie les alertes par notification push (APNs, le service d'Apple qui achemine les notifications), même quand l'app est fermée :
 
@@ -24,7 +24,7 @@ Aucune dépendance npm : Node.js 22 suffit.
 
 ### 1. Créer la clé APNs chez Apple
 1. https://developer.apple.com/account → **Certificates, Identifiers & Profiles** → **Keys** → **+**.
-2. Nom : « Red Alert Push », coche **Apple Push Notifications service (APNs)** → **Continue** → **Register**.
+2. Nom : « Rail Alert Push », coche **Apple Push Notifications service (APNs)** → **Continue** → **Register**.
 3. Télécharge le fichier `AuthKey_XXXXXXXXXX.p8` (téléchargeable **une seule fois**) et note le **Key ID** (10 caractères).
 4. Note ton **Team ID** (dans **Membership**).
 

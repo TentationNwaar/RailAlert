@@ -1,7 +1,7 @@
 {
   "name": "redalert-server",
   "version": "1.0.0",
-  "description": "Serveur push de Red Alert : surveille les trajets et envoie les alertes via APNs",
+  "description": "Serveur push de Rail Alert : surveille les trajets et envoie les alertes via APNs",
   "type": "module",
   "main": "src/index.js",
   "engines": { "node": ">=22" },

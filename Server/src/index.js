@@ -1,4 +1,4 @@
-// Serveur push de Red Alert.
+// Serveur push de Rail Alert.
 //   POST   /v1/devices          inscription / mise à jour d'un appareil (jeton push, langue, trajets)
 //   DELETE /v1/devices/:token   désinscription
 //   GET    /health              état du serveur
@@ -48,6 +48,6 @@ if (!config.appKey) console.warn('Attention : APP_KEY est vide, toutes les inscr
 if (config.dryRun) console.warn('Mode DRY_RUN : aucune notification ne sera envoyée à Apple (affichage dans le journal).');
 
 server.listen(config.port, () => {
-  console.log(`Red Alert server sur le port ${config.port}`);
+  console.log(`Rail Alert server sur le port ${config.port}`);
   start();
 });
