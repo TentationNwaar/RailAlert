@@ -1,8 +1,8 @@
-# Politique de confidentialité — Red Alert
+# Politique de confidentialité — Rail Alert
 
 *Dernière mise à jour : [date de publication]*
 
-Red Alert est une application iOS qui affiche les perturbations et travaux du réseau ferroviaire suisse et avertit l'utilisateur quand ses trajets habituels sont touchés. Cette politique explique quelles données sont traitées, pourquoi et où. Elle suit la loi fédérale sur la protection des données (nLPD).
+Rail Alert est une application iOS qui affiche les perturbations et travaux du réseau ferroviaire suisse et avertit l'utilisateur quand ses trajets habituels sont touchés. Cette politique explique quelles données sont traitées, pourquoi et où. Elle suit la loi fédérale sur la protection des données (nLPD).
 
 ## Responsable
 
@@ -20,7 +20,7 @@ Elles sont effacées quand tu supprimes un trajet ou l'application.
 
 ## Données envoyées au serveur de notifications
 
-Pour t'envoyer des alertes même quand l'application est fermée, Red Alert transmet à son serveur :
+Pour t'envoyer des alertes même quand l'application est fermée, Rail Alert transmet à son serveur :
 
 - le **jeton de notification** de ton iPhone (un identifiant technique fourni par Apple, qui ne permet pas de t'identifier) ;
 - ta **langue** ;
@@ -40,11 +40,11 @@ Pour afficher les informations, l'application interroge directement :
 - **transport.opendata.ch** : recherche de gares ;
 - **Apple Push Notification service** : acheminement des notifications.
 
-Ces services reçoivent l'adresse IP de ton appareil et le contenu de la requête (par exemple les gares recherchées), comme pour toute connexion Internet. Red Alert n'utilise aucun outil publicitaire ni de mesure d'audience, et ne fait aucun suivi (tracking).
+Ces services reçoivent l'adresse IP de ton appareil et le contenu de la requête (par exemple les gares recherchées), comme pour toute connexion Internet. Rail Alert n'utilise aucun outil publicitaire ni de mesure d'audience, et ne fait aucun suivi (tracking).
 
 ## Achats
 
-Les achats (abonnement mensuel et achat à vie) sont traités entièrement par Apple. Red Alert ne reçoit ni ton nom ni tes données de paiement : l'application sait seulement si Red Alert+ est actif.
+Les achats (abonnement mensuel et achat à vie) sont traités entièrement par Apple. Rail Alert ne reçoit ni ton nom ni tes données de paiement : l'application sait seulement si Rail Alert+ est actif.
 
 ## Traduction
 
@@ -56,7 +56,7 @@ Tu peux demander à tout moment l'accès à tes données, leur rectification ou 
 
 ## Avertissement
 
-Red Alert n'est pas une application officielle des CFF ni d'une entreprise de transport. Les informations proviennent de sources de données ouvertes et peuvent être incomplètes ou en retard : en cas de doute, vérifie sur sbb.ch ou dans l'application CFF.
+Rail Alert n'est pas une application officielle des CFF ni d'une entreprise de transport. Les informations proviennent de sources de données ouvertes et peuvent être incomplètes ou en retard : en cas de doute, vérifie sur sbb.ch ou dans l'application CFF.
 
 ## Modifications
 

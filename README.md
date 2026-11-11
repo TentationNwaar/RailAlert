@@ -1,4 +1,4 @@
-# Red Alert
+# Rail Alert
 
 App iOS qui affiche les perturbations du réseau CFF sur une carte et surveille les trajets habituels de l'utilisateur (retard, suppression), jusque sur l'écran verrouillé.
 
@@ -39,7 +39,7 @@ Pour revoir le premier lancement pendant le développement : supprimer l'app de 
 - **Alternative** : quand le train est supprimé, en retard ou le tronçon interrompu, l'app propose le train qui arrive le plus tôt (carte du trajet, notification, Live Activity, Siri).
 - **Affluence** : 1 à 3 silhouettes (vert, jaune, rouge) sur la carte du trajet et dans les départs.
 - **Suivi en direct (Live Activity)** : bouton dans le détail d'un trajet ; écran verrouillé + Dynamic Island.
-- **Raccourcis Siri** : « Mon train est à l'heure avec Red Alert » (phrases dans les 4 langues, `RedAlert/AppShortcuts.xcstrings`).
+- **Raccourcis Siri** : « Mon train est à l'heure avec Rail Alert » (phrases dans les 4 langues, `RedAlert/AppShortcuts.xcstrings`).
 - **Départs d'une gare** : toucher une gare d'un tronçon sur la carte, ou les boutons « Départs de … » dans le détail d'un trajet.
 - **Ponctualité sur 30 jours** : dans le détail d'un trajet (basée sur les vérifications faites par l'app peu avant le départ).
 - **Accessibilité** : descriptions VoiceOver sur les triangles, boutons ronds, voies, affluence, jours ; heures qui suivent la taille de texte choisie.
@@ -83,7 +83,7 @@ Le résultat apparaît sur la carte du trajet (bordure jaune ou rouge), dans le 
 
 1. Lancer l'app une fois et ajouter un trajet (onglet **Mes trajets**, bouton +).
 2. Verrouiller l'iPhone, appuyer longuement sur l'écran verrouillé, puis **Personnaliser** → **Écran verrouillé**.
-3. Toucher la zone sous l'heure, chercher **Red Alert**, choisir le widget rectangulaire **Mon trajet**.
+3. Toucher la zone sous l'heure, chercher **Rail Alert**, choisir le widget rectangulaire **Mon trajet**.
 
 ## Organisation du code
 
@@ -122,16 +122,16 @@ Les dossiers sont « synchronisés » : tout fichier `.swift` ajouté dans un de
 - Le widget se rafraîchit toutes les 10 min quand le trajet approche, sinon toutes les 30 min (quota imposé par iOS).
 - Seules les perturbations dont les gares sont reconnues apparaissent sur la carte. Les autres restent visibles dans la liste.
 
-## Red Alert+ (modèle freemium)
+## Rail Alert+ (modèle freemium)
 
-| Gratuit | Red Alert+ |
+| Gratuit | Rail Alert+ |
 |---|---|
 | Carte, filtres, liste, départs en gare, Siri, widget | Tout le gratuit |
-| 1 trajet surveillé (notifications locales) | Trajets illimités, serveur push |
+| 2 trajets surveillé (notifications locales) | Trajets illimités, serveur push |
 | | Suivi en direct (Live Activity), alternatives, ponctualité |
 
 - Produits (identifiants à reprendre tels quels dans App Store Connect) :
-  - `ch.maxweyermann.RedAlert.plus.monthly` : abonnement mensuel, CHF 3.–, essai gratuit de 7 jours, groupe « Red Alert+ » ;
+  - `ch.maxweyermann.RedAlert.plus.subscription.monthly` : abonnement mensuel, CHF 3.–, essai gratuit de 7 jours, groupe « Rail Alert+ » ;
   - `ch.maxweyermann.RedAlert.plus.lifetime` : achat non consommable, CHF 25.–.
 - Code : `Shared/Premium.swift` (règles gratuit / payant), `RedAlert/Store/StoreManager.swift` (StoreKit 2), `RedAlert/Store/PaywallView.swift` (écran d'achat).
 - Test dans Xcode sans compte payant : `RedAlert/RedAlert.storekit` (Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration).

@@ -1,6 +1,6 @@
-# Red Alert : fiche App Store et liste de contrôle
+# Rail Alert : fiche App Store et liste de contrôle
 
-Tout ce qu'il faut pour publier Red Alert sur l'App Store. Les textes sont prêts à copier dans App Store Connect, le site d'Apple où l'on gère les apps publiées. Les longueurs respectent les limites d'Apple : 30 caractères pour le nom et le sous-titre, 100 pour les mots-clés.
+Tout ce qu'il faut pour publier Rail Alert sur l'App Store. Les textes sont prêts à copier dans App Store Connect, le site d'Apple où l'on gère les apps publiées. Les longueurs respectent les limites d'Apple : 30 caractères pour le nom et le sous-titre, 100 pour les mots-clés.
 
 ## 1. Avant la soumission (dans l'ordre)
 
@@ -12,11 +12,15 @@ Tout ce qu'il faut pour publier Red Alert sur l'App Store. Les textes sont prêt
    - ajouter **Push Notifications** et **Background Modes → Background fetch**.
 4. **App Store Connect → Business** : accepter le contrat **Paid Applications**, ajouter le compte bancaire et remplir les formulaires fiscaux. Sans cela, les achats ne fonctionnent pas.
 5. **App Store Connect → Mon app → Achats intégrés** : créer les deux produits (voir section 6).
-6. **Politique de confidentialité** :
-   - remplir `RedAlert/Settings/LegalInfo.swift` ;
-   - publier la page web (par exemple avec GitHub Pages) ;
-   - copier son adresse dans `privacyPolicyURL` et dans App Store Connect.
-7. **Page d'assistance** : une adresse web avec un moyen de contact (exigée par Apple). Une simple page avec ton e-mail suffit.
+6. **Politique de confidentialité et page d'assistance** : elles sont prêtes dans le dossier `Site/` (4 langues). Pour les mettre en ligne gratuitement avec GitHub Pages :
+   1. sur github.com, bouton **+** → **New repository**, nom `redalert-site`, visibilité **Public**, puis **Create repository** ;
+   2. sur la page du dépôt, **Add file → Upload files**, glisse les 4 fichiers du dossier `Site/` (`index.html`, `privacy.html`, `style.css`, `logo.svg`), puis **Commit changes** ;
+   3. **Settings → Pages** ; sous « Branch », choisis **main** et **/ (root)**, puis **Save** ;
+   4. après une à deux minutes, les pages sont en ligne :
+      - assistance : `https://tentationnwaar.github.io/redalert-site/`
+      - confidentialité : `https://tentationnwaar.github.io/redalert-site/privacy.html`
+   5. colle l'adresse de confidentialité dans `privacyPolicyURL` (`RedAlert/Settings/LegalInfo.swift`) et dans App Store Connect ; l'adresse d'assistance va dans le champ « Support URL ».
+7. **Le jour où le serveur push est en ligne** : remplir `serverHost` dans `LegalInfo.swift`, puis régénérer `Site/privacy.html` (la section « Aucun serveur » doit être remplacée).
 8. **TestFlight** : envoyer une version de test et l'installer sur ton iPhone. Pour l'envoyer : **Product → Archive** dans Xcode, puis **Distribute App → App Store Connect**.
 9. **Tester l'accessibilité** sur l'iPhone (voir section 8).
 10. **Soumettre** la version à Apple.
@@ -39,10 +43,10 @@ Tout ce qu'il faut pour publier Red Alert sur l'App Store. Les textes sont prêt
 
 | Langue | Nom (30 max) | Sous-titre (30 max) |
 |---|---|---|
-| Français | Red Alert – Trains en Suisse | Retards, travaux et voies |
-| Deutsch | Red Alert – Bahn Schweiz | Verspätungen, Bau und Gleise |
-| Italiano | Red Alert – Treni in Svizzera | Ritardi, lavori e binari |
-| English | Red Alert – Swiss Trains | Delays, works and platforms |
+| Français | Rail Alert – Trains en Suisse | Retards, travaux et voies |
+| Deutsch | Rail Alert – Bahn Schweiz | Verspätungen, Bau und Gleise |
+| Italiano | Rail Alert – Treni in Svizzera | Ritardi, lavori e binari |
+| English | Rail Alert – Swiss Trains | Delays, works and platforms |
 
 **Mots-clés** (séparés par des virgules, sans espace) :
 
@@ -55,9 +59,9 @@ Tout ce qu'il faut pour publier Red Alert sur l'App Store. Les textes sont prêt
 
 ### Français
 
-**Texte promotionnel** : Ton train a du retard ? Red Alert te prévient avant même que tu partes.
+**Texte promotionnel** : Ton train a du retard ? Rail Alert te prévient avant même que tu partes.
 
-Red Alert surveille les trajets que tu fais tous les jours et te prévient dès que quelque chose change : retard, suppression, changement de voie, perturbation ou travaux sur le parcours.
+Rail Alert surveille les trajets que tu fais tous les jours et te prévient dès que quelque chose change : retard, suppression, changement de voie, perturbation ou travaux sur le parcours.
 
 CARTE DU RÉSEAU
 • Toutes les perturbations et tous les travaux en Suisse, sur une carte
@@ -66,6 +70,8 @@ CARTE DU RÉSEAU
 
 TES TRAJETS
 • Retard, suppression et voie du train, en temps réel
+• Trajet complet avec les correspondances, et alerte si une correspondance est menacée
+• Départs en avance signalés (bus et trams)
 • Un autre train proposé quand le tien a un problème
 • Affluence en 1re et 2e classe
 • Historique de ponctualité
@@ -73,22 +79,22 @@ TES TRAJETS
 TOUJOURS À PORTÉE
 • Notifications et widget sur l'écran verrouillé
 • Suivi en direct dans la Dynamic Island
-• « Dis Siri, mon train est à l'heure avec Red Alert »
+• « Dis Siri, mon train est à l'heure avec Rail Alert »
 • Départs en gare avec voies et retards
 
 ACCESSIBLE
 VoiceOver, grande taille de texte, contraste renforcé et animations réduites sont pris en charge.
 
 RED ALERT+
-La version gratuite surveille 1 trajet. Red Alert+ débloque les trajets illimités, le suivi en direct, les alternatives et la ponctualité : CHF 3.– par mois (7 jours d'essai gratuit) ou un achat unique à vie.
+La version gratuite surveille 2 trajets. Rail Alert+ débloque les trajets illimités, le suivi en direct, les alternatives et la ponctualité : CHF 3.– par mois (7 jours d'essai gratuit) ou un achat unique à vie.
 
-Données : opentransportdata.swiss (plateforme officielle des données ouvertes des transports publics suisses). Red Alert n'est pas une application officielle des CFF ni d'une entreprise de transport.
+Données : opentransportdata.swiss (plateforme officielle des données ouvertes des transports publics suisses). Rail Alert n'est pas une application officielle des CFF ni d'une entreprise de transport.
 
 ### Deutsch
 
-**Werbetext**: Dein Zug hat Verspätung? Red Alert sagt es dir, bevor du losgehst.
+**Werbetext**: Dein Zug hat Verspätung? Rail Alert sagt es dir, bevor du losgehst.
 
-Red Alert überwacht deine täglichen Strecken und warnt dich, sobald sich etwas ändert: Verspätung, Ausfall, Gleisänderung, Störung oder Bauarbeiten auf der Strecke.
+Rail Alert überwacht deine täglichen Strecken und warnt dich, sobald sich etwas ändert: Verspätung, Ausfall, Gleisänderung, Störung oder Bauarbeiten auf der Strecke.
 
 NETZKARTE
 • Alle Störungen und Bauarbeiten der Schweiz auf einer Karte
@@ -97,6 +103,8 @@ NETZKARTE
 
 DEINE STRECKEN
 • Verspätung, Ausfall und Gleis in Echtzeit
+• Ganze Reise mit Umstiegen und Warnung, wenn ein Anschluss gefährdet ist
+• Frühere Abfahrten werden gemeldet (Bus und Tram)
 • Ein anderer Zug, wenn deiner ein Problem hat
 • Auslastung in der 1. und 2. Klasse
 • Pünktlichkeitsverlauf
@@ -104,22 +112,22 @@ DEINE STRECKEN
 IMMER GRIFFBEREIT
 • Mitteilungen und Widget auf dem Sperrbildschirm
 • Live-Verfolgung in der Dynamic Island
-• «Hey Siri, ist mein Zug pünktlich laut Red Alert»
+• «Hey Siri, ist mein Zug pünktlich laut Rail Alert»
 • Abfahrten am Bahnhof mit Gleisen und Verspätungen
 
 BARRIEREFREI
 VoiceOver, grosse Schrift, erhöhter Kontrast und reduzierte Bewegung werden unterstützt.
 
 RED ALERT+
-Die Gratisversion überwacht 1 Strecke. Red Alert+ schaltet unbegrenzte Strecken, Live-Verfolgung, Alternativen und Pünktlichkeit frei: CHF 3.– pro Monat (7 Tage gratis) oder einmaliger Kauf auf Lebenszeit.
+Die Gratisversion überwacht 2 Strecken. Rail Alert+ schaltet unbegrenzte Strecken, Live-Verfolgung, Alternativen und Pünktlichkeit frei: CHF 3.– pro Monat (7 Tage gratis) oder einmaliger Kauf auf Lebenszeit.
 
-Daten: opentransportdata.swiss (offizielle Open-Data-Plattform des Schweizer ÖV). Red Alert ist keine offizielle App der SBB oder eines Transportunternehmens.
+Daten: opentransportdata.swiss (offizielle Open-Data-Plattform des Schweizer ÖV). Rail Alert ist keine offizielle App der SBB oder eines Transportunternehmens.
 
 ### Italiano
 
-**Testo promozionale**: Il tuo treno è in ritardo? Red Alert te lo dice prima ancora che tu esca.
+**Testo promozionale**: Il tuo treno è in ritardo? Rail Alert te lo dice prima ancora che tu esca.
 
-Red Alert controlla i tragitti che fai ogni giorno e ti avvisa appena qualcosa cambia: ritardo, soppressione, cambio di binario, perturbazione o lavori sul percorso.
+Rail Alert controlla i tragitti che fai ogni giorno e ti avvisa appena qualcosa cambia: ritardo, soppressione, cambio di binario, perturbazione o lavori sul percorso.
 
 MAPPA DELLA RETE
 • Tutte le perturbazioni e i lavori in Svizzera su una mappa
@@ -128,6 +136,8 @@ MAPPA DELLA RETE
 
 I TUOI TRAGITTI
 • Ritardo, soppressione e binario in tempo reale
+• Viaggio completo con le coincidenze e avviso se una coincidenza è a rischio
+• Partenze anticipate segnalate (bus e tram)
 • Un altro treno quando il tuo ha un problema
 • Affluenza in 1a e 2a classe
 • Storico della puntualità
@@ -135,22 +145,22 @@ I TUOI TRAGITTI
 SEMPRE A PORTATA DI MANO
 • Notifiche e widget sulla schermata di blocco
 • Diretta nella Dynamic Island
-• «Ehi Siri, il mio treno è in orario secondo Red Alert»
+• «Ehi Siri, il mio treno è in orario secondo Rail Alert»
 • Partenze in stazione con binari e ritardi
 
 ACCESSIBILE
 VoiceOver, testo grande, contrasto elevato e movimento ridotto sono supportati.
 
 RED ALERT+
-La versione gratuita controlla 1 tragitto. Red Alert+ sblocca tragitti illimitati, diretta, alternative e puntualità: CHF 3.– al mese (7 giorni gratis) o acquisto unico a vita.
+La versione gratuita controlla 2 tragitti. Rail Alert+ sblocca tragitti illimitati, diretta, alternative e puntualità: CHF 3.– al mese (7 giorni gratis) o acquisto unico a vita.
 
-Dati: opentransportdata.swiss (piattaforma ufficiale dei dati aperti dei trasporti pubblici svizzeri). Red Alert non è un'app ufficiale delle FFS né di un'impresa di trasporto.
+Dati: opentransportdata.swiss (piattaforma ufficiale dei dati aperti dei trasporti pubblici svizzeri). Rail Alert non è un'app ufficiale delle FFS né di un'impresa di trasporto.
 
 ### English
 
-**Promotional text**: Train running late? Red Alert tells you before you even leave.
+**Promotional text**: Train running late? Rail Alert tells you before you even leave.
 
-Red Alert watches the trips you make every day and warns you as soon as something changes: delay, cancellation, platform change, disruption or construction work on the route.
+Rail Alert watches the trips you make every day and warns you as soon as something changes: delay, cancellation, platform change, disruption or construction work on the route.
 
 NETWORK MAP
 • Every disruption and construction site in Switzerland on one map
@@ -159,6 +169,8 @@ NETWORK MAP
 
 YOUR TRIPS
 • Real-time delay, cancellation and platform
+• Full journey with connections, and an alert when a connection is at risk
+• Early departures flagged (buses and trams)
 • Another train suggested when yours has a problem
 • 1st and 2nd class occupancy
 • Punctuality history
@@ -166,16 +178,16 @@ YOUR TRIPS
 ALWAYS AT HAND
 • Notifications and lock screen widget
 • Live tracking in the Dynamic Island
-• "Hey Siri, is my train on time with Red Alert"
+• "Hey Siri, is my train on time with Rail Alert"
 • Station departures with platforms and delays
 
 ACCESSIBLE
 VoiceOver, larger text, increased contrast and reduced motion are supported.
 
 RED ALERT+
-The free version watches 1 trip. Red Alert+ unlocks unlimited trips, live tracking, alternatives and punctuality: CHF 3 per month (7-day free trial) or a one-time lifetime purchase.
+The free version watches 2 trips. Rail Alert+ unlocks unlimited trips, live tracking, alternatives and punctuality: CHF 3 per month (7-day free trial) or a one-time lifetime purchase.
 
-Data: opentransportdata.swiss (official open data platform of Swiss public transport). Red Alert is not an official app of SBB or any transport company.
+Data: opentransportdata.swiss (official open data platform of Swiss public transport). Rail Alert is not an official app of SBB or any transport company.
 
 ## 5. Captures d'écran
 
@@ -188,7 +200,7 @@ Ordre conseillé (de 3 à 10 captures) :
 3. Écran verrouillé avec le widget et une notification.
 4. Suivi en direct dans la Dynamic Island.
 5. Tableau des départs d'une gare.
-6. Écran Red Alert+.
+6. Écran Rail Alert+.
 
 Les captures peuvent être faites en français seulement. Apple les réutilise pour les autres langues si on n'en fournit pas d'autres.
 
@@ -196,8 +208,8 @@ Les captures peuvent être faites en français seulement. Apple les réutilise p
 
 | Produit | Type | Identifiant | Prix | Détail |
 |---|---|---|---|---|
-| Red Alert+ mensuel | Abonnement auto-renouvelable, groupe « Red Alert+ » | `ch.maxweyermann.RedAlert.plus.monthly` | CHF 3.– | Offre d'introduction : essai gratuit d'une semaine |
-| Red Alert+ à vie | Non consommable | `ch.maxweyermann.RedAlert.plus.lifetime` | à choisir (25.– ou environ 60.–) | — |
+| Rail Alert+ mensuel | Abonnement auto-renouvelable, groupe « Rail Alert+ » | `ch.maxweyermann.RedAlert.plus.subscription.monthly` | CHF 3.– | Offre d'introduction : essai gratuit d'une semaine |
+| Rail Alert+ à vie | Non consommable | `ch.maxweyermann.RedAlert.plus.lifetime` | à choisir (25.– ou environ 60.–) | — |
 
 Pour chaque produit, Apple demande un nom et une description dans chaque langue, ainsi qu'une **capture de l'écran d'achat** pour la vérification.
 
@@ -238,5 +250,5 @@ Dans Xcode, **Xcode → Open Developer Tool → Accessibility Inspector** audite
 
 ## 9. Note pour l'équipe de vérification d'Apple (App Review)
 
-> Red Alert displays Swiss rail disruptions and construction work from opentransportdata.swiss (official open data platform of Swiss public transport, used under its terms of use). It is not affiliated with SBB.
-> To test: open the "My trips" tab, add a trip (e.g. Lausanne → Genève), and open it to see real-time status, departures and punctuality. A second trip opens the Red Alert+ purchase screen (monthly subscription with a 7-day free trial, or lifetime purchase). Notifications are sent when a monitored train is delayed, cancelled or changes platform.
+> Rail Alert displays Swiss rail disruptions and construction work from opentransportdata.swiss (official open data platform of Swiss public transport, used under its terms of use). It is not affiliated with SBB.
+> To test: open the "My trips" tab, add a trip (e.g. Lausanne → Genève), and open it to see real-time status, departures and punctuality. A second trip opens the Rail Alert+ purchase screen (monthly subscription with a 7-day free trial, or lifetime purchase). Notifications are sent when a monitored train is delayed, cancelled or changes platform.
